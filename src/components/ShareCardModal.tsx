@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Download, Copy, Check, Sparkles, Share2, HelpCircle } from 'lucide-react';
+import { X, Download, Copy, Check, Sparkles, Share2, HelpCircle, FileText } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import { Achievement } from '../types';
 
 interface ShareCardModalProps {
   isOpen: boolean;
@@ -8,11 +10,14 @@ interface ShareCardModalProps {
     level: number;
     xp: number;
     streak: number;
+    totalTasksCompleted?: number;
+    totalFocusMinutes?: number;
   };
   xpNeeded: number;
+  achievements: Achievement[];
 }
 
-export default function ShareCardModal({ isOpen, onClose, stats, xpNeeded }: ShareCardModalProps) {
+export default function ShareCardModal({ isOpen, onClose, stats, xpNeeded, achievements }: ShareCardModalProps) {
   const [imgUrl, setImgUrl] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
   const [copySupported, setCopySupported] = useState<boolean>(true);
@@ -216,6 +221,135 @@ export default function ShareCardModal({ isOpen, onClose, stats, xpNeeded }: Sha
     link.click();
   };
 
+  const handleDownloadPDF = () => {
+    if (!imgUrl) return;
+
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Draw dark cosmic background
+      doc.setFillColor(7, 9, 19);
+      doc.rect(0, 0, 210, 297, 'F');
+
+      // Draw elegant neon cyber brackets on A4 page
+      doc.setDrawColor(99, 102, 241);
+      doc.setLineWidth(0.6);
+      const p = 8;
+      const l = 10;
+      doc.line(p, p, p + l, p); doc.line(p, p, p, p + l);
+      doc.line(210 - p, p, 210 - p - l, p); doc.line(210 - p, p, 210 - p, p + l);
+      doc.line(p, 297 - p, p + l, 297 - p); doc.line(p, 297 - p, p, 297 - p - l);
+      doc.line(210 - p, 297 - p, 210 - p - l, 297 - p); doc.line(210 - p, 297 - p, 210 - p, 297 - p - l);
+
+      // PDF Header Banner
+      doc.setFillColor(99, 102, 241, 0.1 * 255);
+      doc.rect(15, 15, 180, 12, 'F');
+      
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(99, 102, 241);
+      doc.text('FOCUS.OS // RELATORIO DE EVOLUCAO E DESEMPENHO', 22, 23);
+
+      // Embedded Card PNG Image
+      // 600x350 is 1.714 ratio, with width 180mm -> height is 105mm
+      doc.addImage(imgUrl, 'PNG', 15, 32, 180, 105);
+
+      // Detailed Stats Summary
+      doc.setDrawColor(99, 102, 241, 0.25 * 255);
+      doc.setLineWidth(0.4);
+      doc.line(15, 147, 195, 147);
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(245, 158, 11); // Amber
+      doc.text('// COGNITIVE METRICS SUMMARY (METRICAS ATIVAS)', 15, 154);
+
+      // Stats boxes
+      doc.setFillColor(30, 41, 59, 0.2 * 255);
+      doc.setDrawColor(99, 102, 241, 0.15 * 255);
+      
+      // Total Tasks Completed
+      doc.rect(15, 160, 85, 28, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(165, 180, 252);
+      doc.text('TAREFAS CONCLUIDAS', 20, 169);
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`${stats.totalTasksCompleted ?? 0}`, 20, 183);
+
+      // Focus Minutes
+      doc.rect(110, 160, 85, 28, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(165, 180, 252);
+      doc.text('MINUTOS DE HIPERFOCO', 115, 169);
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`${stats.totalFocusMinutes ?? 0}m`, 115, 183);
+
+      // Achievements section
+      doc.setDrawColor(99, 102, 241, 0.25 * 255);
+      doc.line(15, 198, 195, 198);
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(165, 180, 252);
+      doc.text('// CONQUISTAS DE PRESTIGIO (TROFEUS DESBLOQUEADOS)', 15, 205);
+
+      const unlocked = achievements.filter(a => a.unlocked);
+      let yOffset = 214;
+      
+      if (unlocked.length === 0) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(113, 113, 122);
+        doc.text('Nenhuma conquista desbloqueada ainda. Complete missoes para ganhar trofeus!', 15, yOffset);
+      } else {
+        const itemsToPrint = unlocked.slice(0, 4);
+        itemsToPrint.forEach((ach) => {
+          doc.setFillColor(245, 158, 11);
+          doc.rect(15, yOffset - 3, 2.5, 2.5, 'F');
+
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(255, 255, 255);
+          doc.text(`${ach.title.toUpperCase()}`, 20, yOffset);
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(161, 161, 170);
+          doc.text(`- ${ach.description} (+${ach.xpReward} XP)`, 20, yOffset + 4.5);
+
+          yOffset += 11;
+        });
+
+        if (unlocked.length > 4) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(8);
+          doc.setTextColor(99, 102, 241);
+          doc.text(`E mais ${unlocked.length - 4} conquistas de prestigio registradas no FocusOS.`, 20, yOffset);
+        }
+      }
+
+      // Footer
+      doc.setFillColor(99, 102, 241, 0.1 * 255);
+      doc.rect(15, 275, 180, 8, 'F');
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(99, 102, 241);
+      doc.text('SISTEMA FOCUS.OS VERIFICADO. RELATORIO EXPORTADO EM SEGURANCA.', 20, 280.5);
+
+      doc.save(`focus_os_resumo_nivel_${stats.level}.pdf`);
+    } catch (err) {
+      console.error('Failed to export PDF', err);
+    }
+  };
+
   const handleCopy = async () => {
     if (!imgUrl) return;
     try {
@@ -299,34 +433,42 @@ export default function ShareCardModal({ isOpen, onClose, stats, xpNeeded }: Sha
         <div className="mt-5 pt-4 border-t border-zinc-900 flex flex-col sm:flex-row gap-2 shrink-0">
           <button
             onClick={onClose}
-            className="sm:flex-1 border border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-white font-bold py-2.5 rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center min-h-[44px]"
+            className="sm:flex-1 border border-zinc-850 hover:bg-zinc-900 text-zinc-500 hover:text-white font-bold py-2 sm:py-2.5 rounded-xl text-[11px] transition-all active:scale-95 flex items-center justify-center min-h-[44px]"
           >
             Fechar
           </button>
           
           <button
             onClick={handleCopy}
-            className="sm:flex-1 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-indigo-500/30 text-white font-bold py-2.5 rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
+            className="sm:flex-1 bg-zinc-900 hover:bg-zinc-850 border border-zinc-850 hover:border-indigo-500/30 text-white font-bold py-2 sm:py-2.5 rounded-xl text-[11px] transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
           >
             {copied ? (
               <>
-                <Check className="w-4 h-4 text-emerald-400" />
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="text-emerald-400">Copiado!</span>
               </>
             ) : (
               <>
-                <Copy className="w-4 h-4 text-indigo-400" />
-                <span>{copySupported ? 'Copiar Imagem' : 'Copiar (Baixar)'}</span>
+                <Copy className="w-3.5 h-3.5 text-indigo-400" />
+                <span>{copySupported ? 'Copiar Imagem' : 'Copiar'}</span>
               </>
             )}
           </button>
 
           <button
             onClick={handleDownload}
-            className="sm:flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px] shadow-[0_0_15px_rgba(79,70,229,0.3)]"
+            className="sm:flex-1 bg-zinc-900 hover:bg-indigo-950/40 border border-zinc-850 hover:border-indigo-500/40 text-indigo-300 font-bold py-2 sm:py-2.5 rounded-xl text-[11px] transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5 text-indigo-400" />
             <span>Baixar PNG</span>
+          </button>
+
+          <button
+            onClick={handleDownloadPDF}
+            className="sm:flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 sm:py-2.5 rounded-xl text-[11px] transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px] shadow-[0_0_15px_rgba(79,70,229,0.3)]"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Baixar PDF</span>
           </button>
         </div>
 

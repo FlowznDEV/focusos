@@ -9,7 +9,7 @@ import TaskList from './components/TaskList';
 import XPConfetti from './components/XPConfetti';
 import DailyTip from './components/DailyTip';
 import ShareCardModal from './components/ShareCardModal';
-import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2 } from 'lucide-react';
+import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled } from './lib/sound';
 
 export default function App() {
@@ -36,7 +36,7 @@ export default function App() {
   };
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [activeTab, setActiveTab] = useState<'stats' | 'achievements'>('stats');
+  const [activeMainTab, setActiveMainTab] = useState<'tasks' | 'stats' | 'coach' | 'achievements'>('tasks');
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(isSoundEnabled());
@@ -91,20 +91,23 @@ export default function App() {
         </div>
       )}
 
+      {/* Decorative neon top laser edge inside header */}
+      <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-indigo-500 to-transparent animate-pulse absolute top-0 left-0 z-50" />
+
       {/* Primary Header - Highly Polished & Adaptive HUD */}
-      <header className="bg-zinc-950/90 border-b border-zinc-900/80 backdrop-blur-md sticky top-0 z-40 shadow-xl transition-all">
+      <header className="bg-zinc-950/95 border-b border-zinc-900/80 backdrop-blur-md sticky top-0 z-40 shadow-xl transition-all duration-500">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
           {/* Main top header flex container */}
           <div className="flex items-center justify-between gap-4">
             
-            {/* Logo area */}
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(79,70,229,0.5)] transition-all shrink-0">
-                <span className="font-black text-xl text-white">F</span>
+            {/* Logo area with rotating glowing elements */}
+            <div className="flex items-center space-x-3 group cursor-pointer">
+              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(79,70,229,0.5)] group-hover:shadow-[0_0_25px_rgba(79,70,229,0.85)] group-hover:rotate-6 transition-all duration-300 shrink-0">
+                <span className="font-black text-xl text-white group-hover:scale-110 transition-transform">F</span>
               </div>
               <div>
                 <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center space-x-2">
-                  <span>FOCUS.OS</span>
+                  <span className="group-hover:text-indigo-400 transition-colors">FOCUS.OS</span>
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping shrink-0" />
                 </h1>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-widest leading-none mt-1">Offline-First RPG</p>
@@ -116,7 +119,7 @@ export default function App() {
               {/* Sound Toggle (Large mobile touch target) */}
               <button
                 onClick={handleToggleSound}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-850/50 text-zinc-400 hover:text-white w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95"
+                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-850/50 hover:border-indigo-500/30 text-zinc-400 hover:text-white w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
                 title={soundEnabled ? "Desativar efeitos sonoros" : "Ativar efeitos sonoros"}
               >
                 {soundEnabled ? <Volume2 className="w-4 h-4 text-indigo-400 animate-pulse" /> : <VolumeX className="w-4 h-4" />}
@@ -126,22 +129,22 @@ export default function App() {
               {/* Help/Info Button (Large mobile touch target) */}
               <button
                 onClick={() => setShowHelpModal(true)}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-850/50 text-zinc-400 hover:text-white w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95"
+                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-850/50 hover:border-indigo-500/30 text-zinc-400 hover:text-white w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
                 title="Como funciona"
               >
-                <HelpCircle className="w-4 h-4" />
+                <HelpCircle className="w-4 h-4 text-zinc-400 hover:text-indigo-400 transition-colors" />
                 <span className="hidden sm:inline ml-1.5">Como funciona</span>
               </button>
             </div>
           </div>
 
           {/* Symmetrical mobile-first HUD stats bar */}
-          <div className="mt-3.5 bg-zinc-900/30 border border-zinc-850/40 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+          <div className="mt-3.5 bg-zinc-900/30 border border-zinc-850/40 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in shadow-inner">
             {/* Level & Streak metrics container */}
             <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
               <div className="flex items-center gap-3">
                 {/* Level Badge with subtle background color */}
-                <div className="flex items-center space-x-2.5 bg-indigo-950/40 border border-indigo-900/40 rounded-xl px-3 py-2">
+                <div className="flex items-center space-x-2.5 bg-indigo-950/40 border border-indigo-900/40 rounded-xl px-3 py-2 hover:border-indigo-500/30 transition-colors">
                   <Award className="w-4 h-4 text-indigo-400 shrink-0" />
                   <div className="leading-none">
                     <span className="block text-[8px] text-indigo-300 uppercase tracking-widest font-bold">Nível</span>
@@ -150,7 +153,7 @@ export default function App() {
                 </div>
 
                 {/* Day Streak Badge with heartbeat animation */}
-                <div className="flex items-center space-x-2.5 bg-orange-950/40 border border-orange-900/40 rounded-xl px-3 py-2">
+                <div className="flex items-center space-x-2.5 bg-orange-950/40 border border-orange-900/40 rounded-xl px-3 py-2 hover:border-orange-500/30 transition-colors">
                   <Flame className="w-4 h-4 text-orange-400 shrink-0 animate-pulse" />
                   <div className="leading-none">
                     <span className="block text-[8px] text-orange-300 uppercase tracking-widest font-bold">Sequência</span>
@@ -185,99 +188,177 @@ export default function App() {
             </div>
           </div>
 
+          {/* Premium Navigation Tabs on Desktop/Tablet */}
+          <div className="hidden md:flex items-center space-x-2 mt-4 pt-3.5 border-t border-zinc-900/60">
+            <button
+              onClick={() => setActiveMainTab('tasks')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeMainTab === 'tasks'
+                  ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.1)]'
+                  : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+              }`}
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+              <span>Missões & Foco</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainTab('stats')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeMainTab === 'stats'
+                  ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.1)]'
+                  : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>Evolução & Gráficos</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainTab('coach')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeMainTab === 'coach'
+                  ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.1)]'
+                  : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span>Treinador Mental IA</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainTab('achievements')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeMainTab === 'achievements'
+                  ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.1)]'
+                  : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>Conquistas ({achievements.filter(a => a.unlocked).length})</span>
+            </button>
+          </div>
+
         </div>
       </header>
 
       {/* Daily Focus Tip Message */}
       <DailyTip />
 
+      {/* Mobile Sticky Bottom HUD Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 border-t border-zinc-900 backdrop-blur-md px-2 py-2 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.8)] pb-safe">
+        <button
+          onClick={() => setActiveMainTab('tasks')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            activeMainTab === 'tasks' ? 'text-indigo-400 bg-indigo-600/10 font-bold' : 'text-zinc-500 font-medium'
+          }`}
+        >
+          <CheckSquare className="w-5 h-5 mb-1" />
+          <span className="text-[9px] uppercase tracking-wider">Missões</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab('stats')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            activeMainTab === 'stats' ? 'text-indigo-400 bg-indigo-600/10 font-bold' : 'text-zinc-500 font-medium'
+          }`}
+        >
+          <BarChart2 className="w-5 h-5 mb-1" />
+          <span className="text-[9px] uppercase tracking-wider font-bold">Gráficos</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab('coach')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            activeMainTab === 'coach' ? 'text-indigo-400 bg-indigo-600/10 font-bold' : 'text-zinc-500 font-medium'
+          }`}
+        >
+          <Brain className="w-5 h-5 mb-1" />
+          <span className="text-[9px] uppercase tracking-wider">Mente IA</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab('achievements')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            activeMainTab === 'achievements' ? 'text-indigo-400 bg-indigo-600/10 font-bold' : 'text-zinc-500 font-medium'
+          }`}
+        >
+          <Trophy className="w-5 h-5 mb-1" />
+          <span className="text-[9px] uppercase tracking-wider">Troféus</span>
+        </button>
+      </div>
+
       {/* Main Content Workspace Grid */}
       <main className="max-w-7xl mx-auto px-4 mt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* LEFT COLUMN: Gamified Tasks Panel (occupies 7 of 12 columns in desktop) */}
-          <div className="lg:col-span-7 space-y-6">
-            
-            {/* Direct Task List Workspace */}
-            <div className="bg-zinc-900/20 border border-zinc-800/40 rounded-3xl p-5 sm:p-6 shadow-sm">
-              <TaskList
-                tasks={tasks}
-                addTask={addTask}
-                deleteTask={deleteTask}
-                toggleTaskCompletion={toggleTaskCompletion}
-                selectedTaskId={selectedTask?.id || null}
-                onSelectTask={handleSelectTask}
+        
+        {activeMainTab === 'tasks' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
+            {/* LEFT COLUMN: Gamified Tasks Panel (occupies 7 of 12 columns in desktop) */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Direct Task List Workspace */}
+              <div className="bg-zinc-900/20 border border-zinc-800/40 rounded-3xl p-5 sm:p-6 shadow-sm">
+                <TaskList
+                  tasks={tasks}
+                  addTask={addTask}
+                  deleteTask={deleteTask}
+                  toggleTaskCompletion={toggleTaskCompletion}
+                  selectedTaskId={selectedTask?.id || null}
+                  onSelectTask={handleSelectTask}
+                />
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: Interactive Focus Companion (occupies 5 of 12 columns) */}
+            <div className="lg:col-span-5 space-y-6">
+              {/* Companion Timer Panel */}
+              <FocusTimer
+                onFocusComplete={handleFocusComplete}
+                currentTaskTitle={activeTaskTitle}
+                soundEnabled={soundEnabled}
+                onToggleSound={handleToggleSound}
               />
             </div>
-
-            {/* Toggle tabs for Stats Dashboard & Achievements */}
-            <div className="bg-zinc-900/20 border border-zinc-800/40 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
-              
-              <div className="flex border-b border-zinc-800/60 pb-1">
-                <button
-                  id="tab-stats-btn"
-                  onClick={() => setActiveTab('stats')}
-                  className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'stats' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
-                >
-                  Métricas de Evolução
-                </button>
-                <button
-                  id="tab-achievements-btn"
-                  onClick={() => setActiveTab('achievements')}
-                  className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'achievements' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
-                >
-                  Conquistas Bloqueadas ({achievements.filter(a => a.unlocked).length})
-                </button>
-              </div>
-
-              {activeTab === 'stats' ? (
-                <StatsDashboard stats={stats} tasks={tasks} />
-              ) : (
-                <AchievementsList achievements={achievements} />
-              )}
-            </div>
-
           </div>
+        )}
 
-          {/* RIGHT COLUMN: Interactive Focus Companion (occupies 5 of 12 columns) */}
-          <div className="lg:col-span-5 space-y-6">
-            
-            {/* Companion Timer Panel */}
-            <FocusTimer
-              onFocusComplete={handleFocusComplete}
-              currentTaskTitle={activeTaskTitle}
-              soundEnabled={soundEnabled}
-              onToggleSound={handleToggleSound}
-            />
+        {activeMainTab === 'stats' && (
+          <div className="bg-zinc-900/20 border border-zinc-800/40 rounded-3xl p-5 sm:p-6 shadow-sm animate-fade-in">
+            <StatsDashboard stats={stats} tasks={tasks} />
+          </div>
+        )}
 
-            {/* Smart IA Assistant Panel */}
+        {activeMainTab === 'coach' && (
+          <div className="max-w-3xl mx-auto animate-fade-in">
             <AICoach
               level={stats.level}
               streak={stats.streak}
               totalTasksCompleted={stats.totalTasksCompleted}
               currentTaskTitle={activeTaskTitle}
             />
-
-            {/* Restart settings block (minimalist footer option) */}
-            <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-3xl p-4 flex items-center justify-between text-[11px] text-zinc-500 shadow-xs">
-              <span className="font-mono">FOCUS.OS v1.0 • offline-first</span>
-              <button
-                id="reset-all-data-btn"
-                onClick={() => {
-                  setShowResetConfirm(true);
-                }}
-                className="flex items-center space-x-1.5 text-zinc-500 hover:text-rose-400 transition-colors"
-                title="Limpar progresso"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Resetar Jornada</span>
-              </button>
-            </div>
-
           </div>
+        )}
 
-        </div>
+        {activeMainTab === 'achievements' && (
+          <div className="bg-zinc-900/20 border border-zinc-800/40 rounded-3xl p-5 sm:p-6 shadow-sm animate-fade-in">
+            <AchievementsList achievements={achievements} />
+          </div>
+        )}
+
       </main>
+
+      {/* Symmetrical footer */}
+      <footer className="max-w-7xl mx-auto px-4 mt-12 pb-24 md:pb-12 text-center flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500 border-t border-zinc-900/60 pt-4">
+        <span className="font-mono">FOCUS.OS v1.1 • Premium Offline-First RPG</span>
+        <button
+          id="reset-all-data-btn"
+          onClick={() => setShowResetConfirm(true)}
+          className="flex items-center space-x-1.5 text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+          title="Limpar progresso"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Resetar Jornada</span>
+        </button>
+      </footer>
 
       {/* Info Help Modal Overlay */}
       {showHelpModal && (
@@ -388,6 +469,7 @@ export default function App() {
         onClose={() => setShowShareModal(false)}
         stats={stats}
         xpNeeded={xpNeeded}
+        achievements={achievements}
       />
 
     </div>

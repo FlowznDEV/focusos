@@ -56,7 +56,7 @@ if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
 
 // API: Get localized focus encouragement and micro-goals based on user state
 app.post("/api/motivate", async (req, res) => {
-  const { level, streak, totalTasksCompleted, feeling, currentTask } = req.body;
+  const { level, streak, totalTasksCompleted, feeling, currentTask, likedQuotes } = req.body;
 
   if (!ai) {
     // Offline / fallback response when API key is missing
@@ -68,6 +68,10 @@ app.post("/api/motivate", async (req, res) => {
   }
 
   try {
+    const quotesContext = likedQuotes && likedQuotes.length > 0 
+      ? `\n- O usuário favoritou/curtiu estas dicas no passado, então ele prefere um tom e estilo que se alinhe com elas: "${likedQuotes.slice(-4).join('"; "')}"`
+      : "";
+
     const prompt = `
 Você é o "Treinador de Foco Inteligente", um assistente extremamente acolhedor, gentil e prático projetado para ajudar pessoas com TDAH, ansiedade ou extrema dificuldade de manter o foco.
 O usuário está tentando gerenciar suas tarefas diárias, mas precisa de incentivo agora.
@@ -77,7 +81,7 @@ Contexto atual do usuário:
 - Sequência atual (streak) de dias: ${streak || 0} dias
 - Total de tarefas concluídas: ${totalTasksCompleted || 0}
 - Como ele diz que está se sentindo agora ou o seu dilema: "${feeling || "Me sinto distraído e sem energia para começar"}"
-- Tarefa em que quer focar (se houver): "${currentTask || "Nenhuma tarefa selecionada"}"
+- Tarefa em que quer focar (se houver): "${currentTask || "Nenhuma tarefa selecionada"}"${quotesContext}
 
 Regras importantes de redação:
 1. Responda em Português do Brasil (PT-BR).

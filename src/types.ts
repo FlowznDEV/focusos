@@ -49,3 +49,28 @@ export interface AICoachResponse {
   suggestedFocusGoal: string;
   supportiveTagline: string;
 }
+
+export interface JournalEntry {
+  id: string;
+  note: string;
+  mood: string;
+  timestamp: string;
+  taskTitle?: string;
+  focusMinutes?: number;
+}
+
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface LongTermGoal {
+  id: string;
+  title: string;
+  description?: string;
+  createdAt: string;
+  completed: boolean;
+  subtasks: SubTask[];
+}

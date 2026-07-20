@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Task, Achievement, UserStats, XPLog, Difficulty, TaskCategory } from './types';
+import { Task, Achievement, UserStats, XPLog, Difficulty, TaskCategory, JournalEntry, LongTermGoal } from './types';
 import { playTaskCompleteSound, playLevelUpSound, playAchievementSound } from './lib/sound';
 
 const DEFAULT_ACHIEVEMENTS: Achievement[] = [
@@ -23,6 +23,8 @@ export function getXPForNextLevel(level: number): number {
 export function useGamifiedState() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [longTermGoals, setLongTermGoals] = useState<LongTermGoal[]>([]);
   const [stats, setStats] = useState<UserStats>({
     xp: 0,
     level: 1,
@@ -48,8 +50,12 @@ export function useGamifiedState() {
     const savedTasks = localStorage.getItem('focus_quest_tasks');
     const savedAchievements = localStorage.getItem('focus_quest_achievements');
     const savedStats = localStorage.getItem('focus_quest_stats');
+    const savedJournal = localStorage.getItem('focus_quest_journal');
+    const savedGoals = localStorage.getItem('focus_quest_long_term_goals');
 
     if (savedTasks) setTasks(JSON.parse(savedTasks));
+    if (savedJournal) setJournalEntries(JSON.parse(savedJournal));
+    if (savedGoals) setLongTermGoals(JSON.parse(savedGoals));
     
     if (savedAchievements) {
       setAchievements(JSON.parse(savedAchievements));
@@ -130,6 +136,22 @@ export function useGamifiedState() {
       localStorage.setItem('focus_quest_stats', JSON.stringify(stats));
     }
   }, [stats]);
+
+  useEffect(() => {
+    if (journalEntries.length > 0) {
+      localStorage.setItem('focus_quest_journal', JSON.stringify(journalEntries));
+    } else {
+      localStorage.removeItem('focus_quest_journal');
+    }
+  }, [journalEntries]);
+
+  useEffect(() => {
+    if (longTermGoals.length > 0) {
+      localStorage.setItem('focus_quest_long_term_goals', JSON.stringify(longTermGoals));
+    } else {
+      localStorage.removeItem('focus_quest_long_term_goals');
+    }
+  }, [longTermGoals]);
 
   // Helper helper to add XP directly in local memory
   const addXPDirectly = (amount: number, reason: string) => {
@@ -297,6 +319,19 @@ export function useGamifiedState() {
   };
 
   // Add focus session minutes and check achievements
+  const addJournalEntry = useCallback((note: string, mood: string, taskTitle?: string, focusMinutes?: number) => {
+    const newEntry: JournalEntry = {
+      id: Math.random().toString(36).substring(2, 9),
+      note,
+      mood,
+      timestamp: new Date().toISOString(),
+      taskTitle,
+      focusMinutes
+    };
+    setJournalEntries(prev => [newEntry, ...prev]);
+    return newEntry;
+  }, []);
+
   const addFocusSession = useCallback((minutes: number) => {
     const xpReward = Math.round(minutes * 3); // 3 XP per focus minute
 
@@ -397,10 +432,93 @@ export function useGamifiedState() {
     setActiveNotification(null);
   }, []);
 
+  const deleteJournalEntry = useCallback((id: string) => {
+    setJournalEntries(prev => prev.filter(entry => entry.id !== id));
+  }, []);
+
+  const addLongTermGoal = useCallback((title: string, description?: string, subtaskTitles: string[] = []) => {
+    const newGoal: LongTermGoal = {
+      id: Math.random().toString(36).substring(2, 9),
+      title,
+      description,
+      createdAt: new Date().toISOString(),
+      completed: false,
+      subtasks: subtaskTitles.map(t => ({
+        id: Math.random().toString(36).substring(2, 9),
+        title: t,
+        completed: false
+      }))
+    };
+    setLongTermGoals(prev => [newGoal, ...prev]);
+    addXPDirectly(50, `Novo Objetivo: ${title}`);
+  }, []);
+
+  const addSubTaskToGoal = useCallback((goalId: string, title: string) => {
+    setLongTermGoals(prev => prev.map(goal => {
+      if (goal.id !== goalId) return goal;
+      const newSub = {
+        id: Math.random().toString(36).substring(2, 9),
+        title,
+        completed: false
+      };
+      const updatedSubtasks = [...goal.subtasks, newSub];
+      return {
+        ...goal,
+        subtasks: updatedSubtasks,
+        completed: false // adding a new subtask resets overall completion if it was true
+      };
+    }));
+  }, []);
+
+  const deleteLongTermGoal = useCallback((id: string) => {
+    setLongTermGoals(prev => prev.filter(g => g.id !== id));
+  }, []);
+
+  const toggleSubTaskCompletion = useCallback((goalId: string, subtaskId: string) => {
+    setLongTermGoals(prev => prev.map(goal => {
+      if (goal.id !== goalId) return goal;
+
+      const updatedSubtasks = goal.subtasks.map(sub => {
+        if (sub.id !== subtaskId) return sub;
+        const willBeCompleted = !sub.completed;
+        
+        // Reward XP on subtask completion
+        if (willBeCompleted) {
+          addXPDirectly(20, `Subtarefa concluída: ${sub.title}`);
+        } else {
+          addXPDirectly(-20, `Subtarefa reaberta: ${sub.title}`);
+        }
+
+        return {
+          ...sub,
+          completed: willBeCompleted,
+          completedAt: willBeCompleted ? new Date().toISOString() : undefined
+        };
+      });
+
+      const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every(s => s.completed);
+      
+      // Reward extra XP for goal completion
+      if (allCompleted && !goal.completed) {
+        addXPDirectly(150, `🏆 META CONCLUÍDA: ${goal.title}!`);
+      } else if (!allCompleted && goal.completed) {
+        addXPDirectly(-150, `Reabertura da meta: ${goal.title}`);
+      }
+
+      return {
+        ...goal,
+        subtasks: updatedSubtasks,
+        completed: allCompleted
+      };
+    }));
+  }, []);
+
   // Utility reset function (for testing or restart)
   const resetAllData = useCallback(() => {
     setTasks([]);
     setAchievements(DEFAULT_ACHIEVEMENTS);
+    setJournalEntries([]);
+    setLongTermGoals([]);
     setStats({
       xp: 0,
       level: 1,
@@ -418,6 +536,8 @@ export function useGamifiedState() {
     localStorage.removeItem('focus_quest_tasks');
     localStorage.removeItem('focus_quest_achievements');
     localStorage.removeItem('focus_quest_stats');
+    localStorage.removeItem('focus_quest_journal');
+    localStorage.removeItem('focus_quest_long_term_goals');
     localStorage.setItem('focus_sessions_total_count', '0');
     addXPDirectly(50, 'Recomeço da jornada!');
   }, []);
@@ -425,11 +545,19 @@ export function useGamifiedState() {
   return {
     tasks,
     achievements,
+    journalEntries,
+    longTermGoals,
     stats,
     addTask,
     deleteTask,
     toggleTaskCompletion,
     addFocusSession,
+    addJournalEntry,
+    deleteJournalEntry,
+    addLongTermGoal,
+    deleteLongTermGoal,
+    toggleSubTaskCompletion,
+    addSubTaskToGoal,
     activeNotification,
     clearNotification,
     triggerConfetti,

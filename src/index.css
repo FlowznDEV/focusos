@@ -22,20 +22,16 @@
   animation: pulse-soft 3s infinite ease-in-out;
 }
 
-/* Custom Scrollbar */
+/* Hide scrollbar for Chrome, Safari and Opera */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
-::-webkit-scrollbar-track {
-  background: rgba(241, 245, 249, 1);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(203, 213, 225, 1);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 1);
+
+html, body {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 body {
@@ -43,22 +39,6 @@ body {
   background-color: #05060a;
   color: #f4f4f5;
   overflow-x: hidden;
-}
-
-/* Custom Scrollbar for Dark Immersive Theme */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #090a0f;
-}
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
 }
 
 /* Glassmorphism dark immersive panel styling */

@@ -50,16 +50,33 @@ export default function LoginScreen({ onLoginSuccess, onPlayOffline }: LoginScre
         body: JSON.stringify({ email: email.trim(), password })
       });
 
-      let data: any;
+      let data: any = null;
       const text = await response.text();
-      try {
-        data = JSON.parse(text);
-      } catch (parseErr) {
-        throw new Error('Formato de resposta inválido do servidor ou erro interno de conexão.');
+      const contentType = response.headers.get("content-type");
+
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = JSON.parse(text);
+        } catch (parseErr) {
+          console.error("Failed to parse JSON response:", parseErr);
+        }
       }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Ocorreu um erro ao processar sua solicitação.');
+        let errorMsg = 'Ocorreu um erro ao processar sua solicitação.';
+        if (data && data.error) {
+          errorMsg = data.error;
+        } else if (text) {
+          const cleanText = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          errorMsg = cleanText.length > 120 ? cleanText.slice(0, 120) + '...' : cleanText;
+        } else {
+          errorMsg = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMsg);
+      }
+
+      if (!data) {
+        throw new Error('Resposta inválida do servidor.');
       }
 
       if (isRegister) {

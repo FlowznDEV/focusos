@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGamifiedState, getXPForNextLevel } from './useGamifiedState';
 import { Task } from './types';
 import FocusTimer from './components/FocusTimer';
@@ -50,6 +50,83 @@ export default function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(isSoundEnabled());
+
+  // Idle Notification State
+  const [idleNotification, setIdleNotification] = useState<{
+    title: string;
+    message: string;
+    suggestedTask: Task | null;
+  } | null>(null);
+
+  // Keep track of idle timer
+  useEffect(() => {
+    let lastInteraction = Date.now();
+    
+    const handleInteraction = () => {
+      lastInteraction = Date.now();
+    };
+
+    // Listen to mouse movement, clicks, keypresses, and touches
+    window.addEventListener('mousemove', handleInteraction);
+    window.addEventListener('mousedown', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+    window.addEventListener('scroll', handleInteraction);
+
+    // Check periodically for idleness
+    const interval = setInterval(() => {
+      const idleTime = Date.now() - lastInteraction;
+      // 30 seconds threshold for a quick, responsive experience
+      const THRESHOLD = 30000; 
+
+      if (idleTime >= THRESHOLD) {
+        setIdleNotification(prev => {
+          if (prev) return prev; // already showing
+
+          const pendingTasks = tasks.filter(t => !t.completed);
+          let suggestedTask: Task | null = null;
+          let title = 'Foco Interrompido? 🎯';
+          let message = 'Que tal retomar o ritmo com uma pequena sessão de foco agora?';
+
+          if (pendingTasks.length > 0) {
+            suggestedTask = pendingTasks[0];
+            title = 'Retomar Missão Diária? ⚔️';
+            message = `Que tal focar na missão "${suggestedTask.title}" para ganhar +${suggestedTask.xpReward} XP?`;
+          } else {
+            title = 'Retomar Ritmo de Foco? 🧘';
+            message = 'Nenhuma missão pendente encontrada. Que tal focar em respirar fundo ou organizar seu espaço?';
+          }
+
+          return {
+            title,
+            message,
+            suggestedTask
+          };
+        });
+      }
+    }, 5000); // check every 5s
+
+    return () => {
+      window.removeEventListener('mousemove', handleInteraction);
+      window.removeEventListener('mousedown', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('scroll', handleInteraction);
+      clearInterval(interval);
+    };
+  }, [tasks]);
+
+  const handleRetakeFocus = (suggestedTask: Task | null) => {
+    if (suggestedTask) {
+      setSelectedTask(suggestedTask);
+      setActiveMainTab('tasks');
+    }
+    setIdleNotification(null);
+  };
+
+  const handleCloseIdleNotification = () => {
+    setIdleNotification(null);
+  };
 
   // Post-focus session journal entry state
   const [completedSessionInfo, setCompletedSessionInfo] = useState<{
@@ -113,6 +190,41 @@ export default function App() {
         </div>
       )}
 
+      {/* Gentle Idle Attention Reminder Notification Toast */}
+      {idleNotification && (
+        <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full bg-zinc-950 border border-amber-500/30 rounded-2xl p-4 shadow-[0_0_20px_rgba(245,158,11,0.08)] flex items-start space-x-3.5 transition-all duration-300 animate-slide-up">
+          <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-amber-400 shrink-0">
+            <Brain className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h5 className="text-[10px] font-mono font-bold tracking-widest text-amber-500 uppercase">// LEMBRETE DE FOCO</h5>
+            <h4 className="text-sm font-bold text-white mt-1 leading-tight">{idleNotification.title}</h4>
+            <p className="text-[11px] text-zinc-400 leading-normal mt-1">{idleNotification.message}</p>
+            
+            <div className="flex items-center space-x-2 mt-3">
+              <button
+                onClick={() => handleRetakeFocus(idleNotification.suggestedTask)}
+                className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/60 text-amber-400 font-extrabold px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
+              >
+                {idleNotification.suggestedTask ? 'Retomar Foco' : 'Praticar Foco'}
+              </button>
+              <button
+                onClick={handleCloseIdleNotification}
+                className="text-zinc-500 hover:text-zinc-300 px-2 py-1.5 text-[10px] font-bold"
+              >
+                Ignorar
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={handleCloseIdleNotification}
+            className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Decorative neon top laser edge inside header */}
       <div className="h-[2px] w-full bg-gradient-to-r from-cyan-400 via-pink-500 to-cyan-400 animate-pulse absolute top-0 left-0 z-50" />
 
@@ -132,7 +244,6 @@ export default function App() {
                   <span className="group-hover:text-cyan-400 transition-colors font-mono">FOCUS.OS_v1.2</span>
                   <span className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-ping shrink-0" />
                 </h1>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest leading-none mt-1">Cyberpunk HUD Interface</p>
               </div>
             </div>
 

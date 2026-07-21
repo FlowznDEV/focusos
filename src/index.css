@@ -114,3 +114,49 @@ body {
   animation: slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
 }
+
+/* Custom animated strikethrough & completed task fade-out */
+@keyframes strike {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.animate-strike {
+  position: relative;
+  display: inline-block;
+}
+
+.animate-strike::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 52%;
+  width: 0%;
+  height: 2px;
+  background-color: #a1a1aa; /* zinc-400 */
+  animation: strike 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform: translateY(-50%);
+}
+
+.task-completed-fade {
+  animation: fade-completed 0.5s ease-out forwards;
+  will-change: opacity, transform;
+}
+
+@keyframes fade-completed {
+  from {
+    opacity: 1;
+    border-color: rgba(63, 63, 70, 0.4);
+    background: rgba(24, 24, 27, 0.3);
+  }
+  to {
+    opacity: 0.55;
+    border-color: rgba(24, 24, 27, 0.6);
+    background: rgba(9, 9, 11, 0.4);
+  }
+}
+

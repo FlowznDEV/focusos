@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash, Folder, AlertCircle, Play, CheckCircle2, Circle, Sparkles, Filter, Check } from 'lucide-react';
+import { Plus, Trash, Folder, AlertCircle, Play, CheckCircle2, Circle, Sparkles, Filter, Check, Search } from 'lucide-react';
 import { Task, Difficulty, TaskCategory } from '../types';
 
 interface TaskListProps {
@@ -35,6 +35,7 @@ export default function TaskList({
 }: TaskListProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Form states
   const [title, setTitle] = useState('');
@@ -59,6 +60,9 @@ export default function TaskList({
   };
 
   const filteredTasks = tasks.filter(t => {
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
     if (filter === 'pending') return !t.completed;
     if (filter === 'completed') return t.completed;
     return true;
@@ -193,29 +197,47 @@ export default function TaskList({
         </form>
       )}
 
-      {/* Filters bar */}
-      <div className="flex items-center space-x-1 bg-zinc-900/80 border border-zinc-800 p-1 rounded-xl w-fit self-start">
-        <button
-          id="filter-all-btn"
-          onClick={() => setFilter('all')}
-          className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'all' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
-        >
-          Todas
-        </button>
-        <button
-          id="filter-pending-btn"
-          onClick={() => setFilter('pending')}
-          className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'pending' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
-        >
-          Pendentes
-        </button>
-        <button
-          id="filter-completed-btn"
-          onClick={() => setFilter('completed')}
-          className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'completed' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
-        >
-          Concluídas
-        </button>
+      {/* Filters & Search bar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="flex items-center space-x-1 bg-zinc-900/80 border border-zinc-800 p-1 rounded-xl w-fit shrink-0">
+          <button
+            id="filter-all-btn"
+            type="button"
+            onClick={() => setFilter('all')}
+            className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'all' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Todas
+          </button>
+          <button
+            id="filter-pending-btn"
+            type="button"
+            onClick={() => setFilter('pending')}
+            className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'pending' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Pendentes
+          </button>
+          <button
+            id="filter-completed-btn"
+            type="button"
+            onClick={() => setFilter('completed')}
+            className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'completed' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Concluídas
+          </button>
+        </div>
+
+        {/* Search input */}
+        <div className="relative w-full sm:w-64">
+          <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            id="task-search-input"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Pesquisar tarefas..."
+            className="w-full text-xs border border-zinc-800 hover:border-zinc-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-xl pl-9 pr-3 py-1.5 bg-zinc-900/60 text-white placeholder-zinc-600 transition-all"
+          />
+        </div>
       </div>
 
       {/* Task List Grid/List */}
@@ -236,7 +258,7 @@ export default function TaskList({
                 key={task.id}
                 className={`p-4 rounded-2xl flex items-center justify-between border transition-all duration-200 group ${
                   task.completed 
-                    ? 'opacity-50 border-zinc-900 bg-zinc-950/40 text-zinc-500' 
+                    ? 'task-completed-fade text-zinc-500' 
                     : isSelected 
                       ? 'border-indigo-500/40 bg-indigo-600/10 shadow-[0_0_15px_rgba(79,70,229,0.15)] scale-[1.01]' 
                       : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900/50 text-zinc-200'
@@ -249,8 +271,9 @@ export default function TaskList({
                   {/* Task completion toggle target */}
                   <button
                     id={`toggle-complete-btn-${task.id}`}
+                    type="button"
                     onClick={() => toggleTaskCompletion(task.id)}
-                    className="p-1 text-zinc-500 hover:text-indigo-400 transition-colors shrink-0 outline-hidden"
+                    className="p-1 text-zinc-500 hover:text-indigo-400 transition-colors shrink-0 outline-hidden animate-fade-in"
                     title={task.completed ? "Desmarcar tarefa" : "Concluir tarefa"}
                   >
                     {task.completed ? (
@@ -259,13 +282,13 @@ export default function TaskList({
                       <Circle className="w-5.5 h-5.5 text-zinc-700 hover:text-indigo-400 transition-colors" />
                     )}
                   </button>
-
+ 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                       <span className="text-sm shrink-0 select-none">
                         {catInfo?.icon || '⭐'}
                       </span>
-                      <h4 className={`text-xs sm:text-sm font-bold truncate ${task.completed ? 'line-through text-zinc-600' : 'text-white'}`}>
+                      <h4 className={`text-xs sm:text-sm font-bold truncate ${task.completed ? 'animate-strike text-zinc-500' : 'text-white'}`}>
                         {task.title}
                       </h4>
                       
@@ -274,9 +297,9 @@ export default function TaskList({
                         +{task.xpReward} XP
                       </span>
                     </div>
-
+ 
                     {task.description && (
-                      <p className={`text-[11px] mt-0.5 line-clamp-1 ${task.completed ? 'line-through text-zinc-600' : 'text-zinc-400'}`}>
+                      <p className={`text-[11px] mt-0.5 line-clamp-1 ${task.completed ? 'animate-strike text-zinc-600' : 'text-zinc-400'}`}>
                         {task.description}
                       </p>
                     )}

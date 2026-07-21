@@ -226,7 +226,7 @@ export default function AICoach({ level, streak, totalTasksCompleted, currentTas
         </div>
 
         {/* Coach Output Box */}
-        <div className="bg-zinc-950/85 border border-zinc-900 rounded-xl p-4 mb-4 relative transition-all duration-300">
+        <div className="bg-zinc-950/85 border border-zinc-900 rounded-xl p-4 mb-4 relative transition-all duration-300 animate-pop-in">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-6">
               <Loader2 className="w-6 h-6 text-pink-400 animate-spin" />

@@ -101,7 +101,7 @@ export default function PremiumModal({
 
   return (
     <div className="fixed inset-0 bg-zinc-950/95 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
-      <div className="bg-zinc-950 border border-orange-500/40 rounded-3xl max-w-lg w-full shadow-[0_0_60px_rgba(249,115,22,0.2)] relative flex flex-col mx-auto my-auto overflow-hidden animate-scale-up">
+      <div className="bg-zinc-950 border border-orange-500/40 rounded-3xl max-w-lg w-full shadow-[0_0_60px_rgba(249,115,22,0.2)] relative flex flex-col mx-auto my-auto overflow-hidden animate-pop-in">
         
         {/* ORANGE TOP GLOW BAR */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-600 via-orange-400 to-orange-600" />

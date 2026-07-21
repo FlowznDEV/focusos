@@ -63,7 +63,7 @@ export default function OnboardingScreen({ onJoin }: OnboardingScreenProps) {
   };
 
   return (
-    <div id="onboarding-root" className="relative min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-center items-center p-4 selection:bg-orange-500/30 overflow-y-auto font-sans">
+    <div id="onboarding-root" className="relative h-screen w-screen bg-zinc-950 text-zinc-100 flex flex-col justify-center items-center p-4 selection:bg-orange-500/30 overflow-y-auto font-sans">
       {/* GLOWS & BACKGROUND ORANGE NEON ANIMATIONS */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-orange-500/10 rounded-full blur-[120px] animate-pulse pointer-events-none" style={{ animationDuration: '8s' }} />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-orange-600/10 rounded-full blur-[140px] animate-pulse pointer-events-none" style={{ animationDuration: '12s' }} />

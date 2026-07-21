@@ -374,7 +374,7 @@ export default function ShareCardModal({ isOpen, onClose, stats, xpNeeded, achie
 
   return (
     <div className="fixed inset-0 bg-zinc-950/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-950 border border-zinc-850 rounded-3xl p-5 sm:p-6 max-w-xl w-full shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden animate-scale-up">
+      <div className="bg-zinc-950 border border-zinc-850 rounded-3xl p-5 sm:p-6 max-w-xl w-full shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden animate-pop-in">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-4 shrink-0">

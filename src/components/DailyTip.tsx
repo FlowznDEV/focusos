@@ -98,7 +98,7 @@ export default function DailyTip({ userLevel = 1, streak = 1, totalTasksComplete
       id="daily-focus-tip-container" 
       className="w-full px-4 sm:px-6 md:px-8 mt-4 animate-slide-down"
     >
-      <div className="relative overflow-hidden bg-zinc-950 border border-orange-500/30 rounded-2xl p-4 sm:p-5 shadow-[0_0_20px_rgba(249,115,22,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="relative overflow-hidden bg-zinc-950 border border-orange-500/30 rounded-2xl p-4 sm:p-5 shadow-[0_0_20px_rgba(249,115,22,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pop-in">
         {/* Cyber Bracket Deco */}
         <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-orange-500" />
         <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-orange-400" />

@@ -130,7 +130,7 @@ Gere os campos estritamente no formato JSON fornecido pelo esquema.
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: prompt,
       config: {
         systemInstruction: "Você é um assistente compassivo para foco e TDAH. Escreva sempre em português (PT-BR). Retorne um JSON válido contendo exatamente as chaves: motivationalMessage, suggestedFocusGoal e supportiveTagline.",
@@ -222,7 +222,7 @@ Diretrizes de Tom por Nível:
 Retorne em Português do Brasil (PT-BR) no formato JSON estrito fornecido.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: prompt,
       config: {
         systemInstruction: "Você é o Mentor Inteligente do FocusOS RPG. Escreva mensagens marcantes, acolhedoras e motivacionais em português. Retorne um JSON válido com a chave 'tip' e 'author'.",

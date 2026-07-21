@@ -118,7 +118,7 @@ export default function FocusTimer({ onFocusComplete, currentTaskTitle, soundEna
   const progressPercent = ((initialSeconds - secondsLeft) / initialSeconds) * 100;
 
   return (
-    <div id="focus-timer-section" className="bg-zinc-900/40 border border-zinc-800/50 p-6 rounded-3xl flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300 shadow-[0_0_25px_rgba(0,0,0,0.4)]">
+    <div id="focus-timer-section" className="bg-zinc-900/40 border border-zinc-800/50 p-6 rounded-3xl flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300 shadow-[0_0_25px_rgba(0,0,0,0.4)] animate-pop-in">
       
       {/* Gentle floating status bubble */}
       <div className="absolute top-3 left-4 flex items-center space-x-1.5 text-xs font-medium text-zinc-500">

@@ -546,7 +546,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen bg-[#05060a] text-zinc-100 pb-16 relative font-sans transition-all duration-[1200ms] ease-in-out ${
+    <div className={`min-h-screen w-full bg-[#05060a] text-zinc-100 relative font-sans flex flex-col transition-all duration-[1200ms] ease-in-out ${
       isNight 
         ? 'brightness-[0.93] contrast-[0.96] saturate-[0.92] [color-scheme:dark] sepia-[0.04]' 
         : 'brightness-100 contrast-100 saturate-100'
@@ -974,7 +974,7 @@ export default function App() {
       )}
 
       {/* Main Content Workspace Grid */}
-      <main className="w-full px-4 sm:px-6 md:px-8 lg:px-10 mt-6 pb-24 md:pb-6 overflow-x-hidden">
+      <main className="w-full flex-1 px-4 sm:px-6 md:px-8 lg:px-10 mt-4 pb-24 md:pb-12">
         {/* Active Premium purchase notification banner */}
         {!premium && getDaysOfUse() >= 1 && showPremiumPrompt && (
           <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-orange-950/80 via-zinc-900/90 to-orange-950/80 border border-orange-500/40 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(249,115,22,0.15)] relative overflow-hidden group animate-fade-in">
@@ -1129,7 +1129,7 @@ export default function App() {
       {/* Info Help Modal Overlay */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative flex flex-col max-h-[85vh] sm:max-h-[90vh] overflow-hidden animate-scale-up">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative flex flex-col max-h-[85vh] sm:max-h-[90vh] overflow-hidden animate-pop-in">
             <button
               onClick={() => setShowHelpModal(false)}
               className="absolute top-4 right-4 text-zinc-500 hover:text-white p-1 transition-colors z-10"
@@ -1184,7 +1184,7 @@ export default function App() {
       {/* Daily Focus Tip Modal Overlay */}
       {showDailyTipModal && (
         <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full shadow-[0_0_30px_rgba(245,158,11,0.15)] relative flex flex-col overflow-hidden animate-scale-up">
+          <div className="bg-zinc-950 border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full shadow-[0_0_30px_rgba(245,158,11,0.15)] relative flex flex-col overflow-hidden animate-pop-in">
             <button
               onClick={() => setShowDailyTipModal(false)}
               className="absolute top-4 right-4 text-zinc-500 hover:text-white p-1 transition-colors z-10 cursor-pointer"
@@ -1244,7 +1244,7 @@ export default function App() {
       {/* Reset Journey Confirmation Modal Overlay */}
       {showResetConfirm && (
         <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative flex flex-col max-h-[85vh] overflow-hidden animate-scale-up">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative flex flex-col max-h-[85vh] overflow-hidden animate-pop-in">
             <button
               onClick={() => setShowResetConfirm(false)}
               className="absolute top-4 right-4 text-zinc-500 hover:text-white p-1 transition-colors z-10"
@@ -1298,8 +1298,8 @@ export default function App() {
 
       {/* Post-focus Mood Diary reflection popup modal */}
       {completedSessionInfo && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-zinc-950 border border-pink-500/40 p-6 rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(236,72,153,0.2)] relative overflow-hidden">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-pink-500/40 p-6 rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(236,72,153,0.2)] relative overflow-hidden animate-pop-in">
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-cyan-400 via-pink-500 to-cyan-400" />
             
             <div className="text-center space-y-4">
@@ -1398,8 +1398,8 @@ export default function App() {
 
       {/* Cloud Conflict Resolver Modal */}
       {cloudConflict && (
-        <div className="fixed inset-0 bg-[#030305]/95 backdrop-blur-md z-[9999] flex items-start justify-center p-4 overflow-hidden">
-          <div className="bg-zinc-950 border border-emerald-500/30 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(16,185,129,0.15)] relative overflow-hidden flex flex-col text-center mt-12 sm:mt-24">
+        <div className="fixed inset-0 bg-[#030305]/95 backdrop-blur-md z-[9999] flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-zinc-950 border border-emerald-500/30 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(16,185,129,0.15)] relative overflow-hidden flex flex-col text-center animate-pop-in">
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-indigo-500 to-emerald-500" />
             
             <div className="w-16 h-16 bg-emerald-950/40 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-400">

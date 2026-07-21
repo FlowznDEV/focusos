@@ -228,7 +228,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
     <div id="stats-dashboard-container" className="space-y-6">
       
       {/* Top Header Action Bar with Report Download */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/40 border border-zinc-800/60 p-4 sm:p-5 rounded-3xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/40 border border-zinc-800/60 p-4 sm:p-5 rounded-3xl animate-slide-up">
         <div className="flex items-center space-x-3.5">
           <div className="bg-orange-500/10 border border-orange-500/30 p-2.5 rounded-2xl text-orange-400 shrink-0">
             <FileText className="w-5 h-5 text-orange-400" />
@@ -242,7 +242,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
         <button
           id="download-monthly-report-btn"
           onClick={handleDownloadMonthlyReport}
-          className="flex items-center justify-center space-x-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-black px-4 py-2.5 rounded-2xl transition-all shadow-lg shadow-orange-600/20 active:scale-95 cursor-pointer shrink-0 uppercase tracking-wider font-mono"
+          className="flex items-center justify-center space-x-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-black px-4 py-2.5 rounded-2xl transition-all shadow-lg shadow-orange-600/20 active:scale-95 cursor-pointer shrink-0 uppercase tracking-wider font-mono animate-pop-in"
           title="Baixar resumo em JSON com horas de foco e tarefas do mês"
         >
           <Download className="w-4 h-4" />
@@ -251,10 +251,12 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
       </div>
 
       {/* RPG Progression Map */}
-      <RpgProgressionMap currentLevel={stats.level} />
+      <div className="animate-pop-in">
+        <RpgProgressionMap currentLevel={stats.level} />
+      </div>
       
       {/* 4 Key Metrics Bar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up-delay-1">
         
         {/* Metric 1: Nível */}
         <div id="metric-level-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-2xl flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300 shadow-sm min-h-[140px]">

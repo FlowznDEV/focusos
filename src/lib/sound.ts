@@ -54,8 +54,8 @@ function playTone(
 }
 
 /**
- * Play a satisfying chime when a task is completed.
- * Sparking E Major chord chime (upward sequence).
+ * Play a satisfying metallic coin clink & achievement chime when a task is completed.
+ * Metallic double coin clink + ascending E Major sparkle resolution.
  */
 export function playTaskCompleteSound() {
   if (!globalSoundEnabled) return;
@@ -67,11 +67,21 @@ export function playTaskCompleteSound() {
 
     const now = ctx.currentTime;
     
-    // Smooth high-quality chime chord
-    playTone(ctx, 659.25, now, 0.4, 'sine', 0.12);        // E5
-    playTone(ctx, 830.61, now + 0.04, 0.5, 'sine', 0.12); // G#5
-    playTone(ctx, 987.77, now + 0.08, 0.6, 'sine', 0.12); // B5
-    playTone(ctx, 1318.51, now + 0.12, 0.8, 'sine', 0.10); // E6
+    // Coin Clink 1 (High metallic ring)
+    playTone(ctx, 987.77, now, 0.15, 'triangle', 0.25);
+    playTone(ctx, 1975.53, now + 0.04, 0.35, 'sine', 0.20);
+    playTone(ctx, 2637.02, now + 0.08, 0.40, 'sine', 0.15);
+
+    // Coin Clink 2 (Secondary high metallic clink)
+    playTone(ctx, 1318.51, now + 0.12, 0.20, 'triangle', 0.25);
+    playTone(ctx, 2637.02, now + 0.15, 0.45, 'sine', 0.22);
+    playTone(ctx, 3135.96, now + 0.18, 0.50, 'sine', 0.18);
+
+    // Achievement Resolution Chord (E Major Sparkle)
+    playTone(ctx, 1318.51, now + 0.24, 0.6, 'sine', 0.12); // E6
+    playTone(ctx, 1661.22, now + 0.28, 0.7, 'sine', 0.10); // G#6
+    playTone(ctx, 1975.53, now + 0.32, 0.8, 'sine', 0.10); // B6
+    playTone(ctx, 2637.02, now + 0.36, 1.0, 'sine', 0.08); // E7
   } catch (e) {
     console.error("Failed to play task complete sound:", e);
   }
@@ -170,3 +180,29 @@ export function playTypeSound() {
     // Ignore audio errors during high frequency typing
   }
 }
+
+/**
+ * Play a descending error / cancellation sound effect when a task is deleted
+ * or a focus cycle is interrupted prematurely.
+ */
+export function playCancelSound() {
+  if (!globalSoundEnabled) return;
+
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    const now = ctx.currentTime;
+
+    // Soft downward buzz/thud for cancellation or task deletion
+    playTone(ctx, 280, now, 0.1, 'sawtooth', 0.12);
+    playTone(ctx, 200, now + 0.06, 0.12, 'sawtooth', 0.12);
+    playTone(ctx, 130, now + 0.12, 0.2, 'triangle', 0.10);
+  } catch (e) {
+    console.error("Failed to play cancel sound:", e);
+  }
+}
+
+export const playErrorSound = playCancelSound;
+

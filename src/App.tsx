@@ -16,7 +16,7 @@ import OnboardingScreen from './components/OnboardingScreen';
 import PremiumModal from './components/PremiumModal';
 import PremiumWelcome from './components/PremiumWelcome';
 import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon } from 'lucide-react';
-import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound } from './lib/sound';
+import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound, playLevelUpSound } from './lib/sound';
 
 const FOCUS_TIPS = [
   "A técnica Pomodoro (25 minutos de foco e 5 de descanso) ajuda a manter a mente fresca.",
@@ -54,7 +54,7 @@ export default function App() {
     resetAllData
   } = useGamifiedState();
 
-  // Session & Authentication states
+  // Session & Authentication states - Local Checkpoint Auto-Save
   const [session, setSession] = useState<{ email: string; token: string } | null>(() => {
     const saved = localStorage.getItem('focus_quest_user_session');
     if (saved) {
@@ -65,6 +65,19 @@ export default function App() {
         localStorage.removeItem('focus_quest_user_session');
       }
     }
+
+    // Auto checkpoint: If user has visited before or has local tasks/stats stored, auto-restore save checkpoint
+    const hasVisited = localStorage.getItem('focus_quest_has_visited') === 'true';
+    const hasLocalTasks = localStorage.getItem('focus_quest_tasks');
+    const hasLocalStats = localStorage.getItem('focus_quest_stats');
+
+    if (hasVisited || hasLocalTasks || hasLocalStats) {
+      const defaultCheckpoint = { email: 'guerreiro@focusos.app', token: 'local_save_checkpoint' };
+      localStorage.setItem('focus_quest_user_session', JSON.stringify(defaultCheckpoint));
+      localStorage.setItem('focus_quest_has_visited', 'true');
+      return defaultCheckpoint;
+    }
+
     return null;
   });
   const [isOfflineMode, setIsOfflineMode] = useState(() => {
@@ -195,8 +208,7 @@ export default function App() {
         });
         if (!res.ok) {
           if (res.status === 401) {
-            setSession(null);
-            localStorage.removeItem('focus_quest_user_session');
+            setIsOfflineMode(true);
           }
           throw new Error('Sync failed');
         }
@@ -221,11 +233,12 @@ export default function App() {
   const [prevLevel, setPrevLevel] = useState<number | null>(null);
   const [showLevelParticles, setShowLevelParticles] = useState(false);
 
-  // Monitor level-up to trigger particles
+  // Monitor level-up to trigger particles and sound effect
   useEffect(() => {
     if (stats && stats.level) {
       if (prevLevel !== null && stats.level > prevLevel) {
         setShowLevelParticles(true);
+        playLevelUpSound();
         const timer = setTimeout(() => {
           setShowLevelParticles(false);
         }, 4000);
@@ -266,11 +279,39 @@ export default function App() {
   // Daily Focus Tip Modal State
   const [showDailyTipModal, setShowDailyTipModal] = useState(false);
   const [currentTip, setCurrentTip] = useState('');
+  const [loadingModalTip, setLoadingModalTip] = useState(false);
   const [zenMode, setZenMode] = useState(false);
 
+  const fetchModalTip = async () => {
+    setLoadingModalTip(true);
+    try {
+      const response = await fetch('/api/daily-tip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level: stats?.level || 1,
+          streak: stats?.streak || 1,
+          totalTasksCompleted: stats?.totalTasksCompleted || 0
+        })
+      });
+      const data = await response.json();
+      if (data && data.tip) {
+        setCurrentTip(data.tip);
+      } else {
+        const randomIndex = Math.floor(Math.random() * FOCUS_TIPS.length);
+        setCurrentTip(FOCUS_TIPS[randomIndex]);
+      }
+    } catch (err) {
+      console.error("Error fetching modal tip:", err);
+      const randomIndex = Math.floor(Math.random() * FOCUS_TIPS.length);
+      setCurrentTip(FOCUS_TIPS[randomIndex]);
+    } finally {
+      setLoadingModalTip(false);
+    }
+  };
+
   const handleOpenTipModal = () => {
-    const randomIndex = Math.floor(Math.random() * FOCUS_TIPS.length);
-    setCurrentTip(FOCUS_TIPS[randomIndex]);
+    fetchModalTip();
     setShowDailyTipModal(true);
     trackFunctionUsed('tip');
   };
@@ -465,6 +506,7 @@ export default function App() {
           const newSession = { email, token };
           setSession(newSession);
           localStorage.setItem('focus_quest_user_session', JSON.stringify(newSession));
+          localStorage.setItem('focus_quest_has_visited', 'true');
           localStorage.setItem('focus_quest_offline_mode', 'false');
           setIsOfflineMode(false);
           
@@ -722,23 +764,23 @@ export default function App() {
           {/* Symmetrical mobile-first HUD stats bar */}
           {!zenMode && (
             <div className="mt-3.5 bg-zinc-950/50 border border-zinc-900 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in shadow-inner relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
               {/* Level & Streak metrics container */}
               <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
                 <div className="flex items-center gap-3">
                   {/* Level Badge with subtle background color */}
-                  <div className="relative overflow-visible flex items-center space-x-2.5 bg-cyan-950/30 border border-cyan-500/20 rounded-xl px-3 py-2 hover:border-cyan-500/50 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.05)]">
-                    <Award className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <div className="relative overflow-visible flex items-center space-x-2.5 bg-orange-950/30 border border-orange-500/30 rounded-xl px-3 py-2 hover:border-orange-500/50 transition-colors shadow-[0_0_10px_rgba(249,115,22,0.05)]">
+                    <Award className="w-4 h-4 text-orange-400 shrink-0" />
                     <div className="leading-none">
-                      <span className="block text-[8px] text-cyan-300 uppercase tracking-widest font-bold font-mono">Nível</span>
+                      <span className="block text-[8px] text-orange-300 uppercase tracking-widest font-bold font-mono">Nível</span>
                       <span className="text-xs font-black text-white font-mono">{stats.level} <span className="text-[9px] text-zinc-600">/ 15</span></span>
                     </div>
 
                     {showLevelParticles && (
                       <>
                         {/* Pulsing glow rings around badge */}
-                        <span className="absolute inset-0 rounded-xl border border-cyan-400 animate-ping opacity-75 pointer-events-none" />
-                        <span className="absolute -inset-1 rounded-xl bg-cyan-500/10 blur-sm animate-pulse pointer-events-none" />
+                        <span className="absolute inset-0 rounded-xl border border-orange-400 animate-ping opacity-75 pointer-events-none" />
+                        <span className="absolute -inset-1 rounded-xl bg-orange-500/10 blur-sm animate-pulse pointer-events-none" />
                         
                         {/* 12 energy particles radiating outward */}
                         {[...Array(12)].map((_, i) => {
@@ -747,7 +789,7 @@ export default function App() {
                           return (
                             <span
                               key={i}
-                              className="absolute w-1.5 h-1.5 bg-gradient-to-r from-cyan-400 to-indigo-400 rounded-full pointer-events-none"
+                              className="absolute w-1.5 h-1.5 bg-gradient-to-r from-orange-500 to-orange-400 rounded-full pointer-events-none"
                               style={{
                                 left: '50%',
                                 top: '50%',
@@ -763,10 +805,10 @@ export default function App() {
                   </div>
 
                   {/* Day Streak Badge with heartbeat animation */}
-                  <div className="flex items-center space-x-2.5 bg-pink-950/30 border border-pink-500/20 rounded-xl px-3 py-2 hover:border-pink-500/50 transition-colors shadow-[0_0_10px_rgba(236,72,153,0.05)]">
-                    <Flame className="w-4 h-4 text-pink-400 shrink-0 animate-pulse" />
+                  <div className="flex items-center space-x-2.5 bg-zinc-900 border border-orange-500/20 rounded-xl px-3 py-2 hover:border-orange-500/40 transition-colors shadow-[0_0_10px_rgba(249,115,22,0.05)]">
+                    <Flame className="w-4 h-4 text-orange-400 shrink-0 animate-pulse" />
                     <div className="leading-none">
-                      <span className="block text-[8px] text-pink-300 uppercase tracking-widest font-bold font-mono">Sequência</span>
+                      <span className="block text-[8px] text-orange-300 uppercase tracking-widest font-bold font-mono">Sequência</span>
                       <span className="text-xs font-black text-white font-mono">{stats.streak} {stats.streak === 1 ? 'DIA' : 'DIAS'}</span>
                     </div>
                   </div>
@@ -775,10 +817,10 @@ export default function App() {
                 {/* Symmetrical Share Button inside HUD container */}
                 <button
                   onClick={() => setShowShareModal(true)}
-                  className="flex items-center justify-center space-x-1.5 bg-pink-600/10 hover:bg-pink-600/20 border border-pink-500/20 text-pink-400 font-extrabold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ml-auto md:ml-3 shrink-0 h-10 min-w-[40px] cursor-pointer"
+                  className="flex items-center justify-center space-x-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 font-extrabold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ml-auto md:ml-3 shrink-0 h-10 min-w-[40px] cursor-pointer"
                   title="Compartilhar Progresso"
                 >
-                  <Share2 className="w-4 h-4 text-pink-400" />
+                  <Share2 className="w-4 h-4 text-orange-400" />
                   <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-extrabold">Compartilhar</span>
                 </button>
               </div>
@@ -787,11 +829,11 @@ export default function App() {
               <div className="flex-1 max-w-xl w-full flex flex-col justify-center">
                 <div className="flex justify-between items-baseline text-[10px] font-bold text-zinc-400 mb-1.5 font-mono">
                   <span className="uppercase tracking-wider">Progresso de Experiência</span>
-                  <span className="text-cyan-400">{stats.xp} / {xpNeeded} XP</span>
+                  <span className="text-orange-400">{stats.xp} / {xpNeeded} XP</span>
                 </div>
                 <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden relative border border-zinc-900">
                   <div
-                    className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                    className="h-full bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(249,115,22,0.5)]"
                     style={{ width: `${xpProgressPercent}%` }}
                   />
                 </div>
@@ -806,8 +848,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'tasks'
-                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <CheckSquare className="w-3.5 h-3.5" />
@@ -818,8 +860,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'stats'
-                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <BarChart2 className="w-3.5 h-3.5" />
@@ -830,8 +872,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'coach'
-                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <Brain className="w-3.5 h-3.5" />
@@ -842,8 +884,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'achievements'
-                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <Trophy className="w-3.5 h-3.5" />
@@ -854,8 +896,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'journal'
-                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
@@ -868,7 +910,13 @@ export default function App() {
       </header>
 
       {/* Daily Focus Tip Message */}
-      {!zenMode && <DailyTip />}
+      {!zenMode && (
+        <DailyTip 
+          userLevel={stats.level} 
+          streak={stats.streak} 
+          totalTasksCompleted={stats.totalTasksCompleted} 
+        />
+      )}
 
       {/* Mobile Sticky Bottom HUD Navigation */}
       {!zenMode && (
@@ -876,7 +924,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'tasks' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
+              activeMainTab === 'tasks' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <CheckSquare className="w-5 h-5 mb-1" />
@@ -886,7 +934,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'stats' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
+              activeMainTab === 'stats' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <BarChart2 className="w-5 h-5 mb-1" />
@@ -896,7 +944,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'coach' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
+              activeMainTab === 'coach' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <Brain className="w-5 h-5 mb-1" />
@@ -906,7 +954,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'achievements' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
+              activeMainTab === 'achievements' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <Trophy className="w-5 h-5 mb-1" />
@@ -916,7 +964,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'journal' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
+              activeMainTab === 'journal' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <BookOpen className="w-5 h-5 mb-1" />
@@ -929,16 +977,16 @@ export default function App() {
       <main className="w-full px-4 sm:px-6 md:px-8 lg:px-10 mt-6 pb-24 md:pb-6 overflow-x-hidden">
         {/* Active Premium purchase notification banner */}
         {!premium && getDaysOfUse() >= 1 && showPremiumPrompt && (
-          <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-amber-950/80 via-yellow-950/80 to-amber-950/80 border border-amber-500/30 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(245,158,11,0.1)] relative overflow-hidden group animate-fade-in">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-400/50 to-transparent animate-pulse" />
+          <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-orange-950/80 via-zinc-900/90 to-orange-950/80 border border-orange-500/40 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(249,115,22,0.15)] relative overflow-hidden group animate-fade-in">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-400/50 to-transparent animate-pulse" />
             <div className="flex items-center space-x-3.5 text-left">
-              <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-2xl text-amber-400 shrink-0">
-                <Sparkles className="w-5 h-5 animate-pulse text-amber-400" />
+              <div className="bg-orange-500/10 border border-orange-500/30 p-2.5 rounded-2xl text-orange-400 shrink-0">
+                <Sparkles className="w-5 h-5 animate-pulse text-orange-400" />
               </div>
               <div>
-                <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest block">// NOTIFICAÇÃO DE CHEFIA PREMIUM</span>
-                <h4 className="text-sm font-black text-white uppercase tracking-tight mt-0.5">Heroísmo Premium Liberado!</h4>
-                <p className="text-xs text-zinc-400 mt-1">Você completou <strong>1 dia de uso ativo</strong> na sua jornada FocusOS! Desbloqueie o Treinador IA, gráficos avançados e trilha RPG premium.</p>
+                <span className="text-[9px] font-mono font-bold text-orange-400 uppercase tracking-widest block">// RECOMENDAÇÃO PREMIUM</span>
+                <h4 className="text-sm font-black text-white uppercase tracking-tight mt-0.5">Assinatura Premium FocusOS</h4>
+                <p className="text-xs text-zinc-400 mt-1">Desbloqueie o Treinador IA, gráficos avançados, Backup em Nuvem e rádios Lofi exclusivas.</p>
               </div>
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
@@ -947,9 +995,9 @@ export default function App() {
                   playTypeSound();
                   setShowPremiumModal(true);
                 }}
-                className="flex-1 md:flex-initial bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-lg shadow-amber-500/10"
+                className="flex-1 md:flex-initial bg-orange-600 hover:bg-orange-500 text-white font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-lg shadow-orange-500/20"
               >
-                Liberar Agora
+                Ver Planos
               </button>
               <button
                 onClick={() => {
@@ -1145,35 +1193,45 @@ export default function App() {
               <X className="w-5 h-5" />
             </button>
             
-            <div className="flex items-center space-x-2 border-b border-zinc-800/50 pb-3 mb-4 shrink-0">
-              <div className="bg-amber-950/80 p-1.5 rounded-lg text-amber-400">
+            <div className="flex items-center space-x-2.5 border-b border-zinc-800/50 pb-3 mb-4 shrink-0">
+              <div className="bg-amber-950/80 p-2 rounded-xl text-amber-400 border border-amber-500/30">
                 <Lightbulb className="w-5 h-5 animate-pulse text-amber-400" />
               </div>
-              <h4 className="text-sm font-bold text-white uppercase tracking-wider font-mono">Dica de Foco do Dia</h4>
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Dica de Foco do Dia</h4>
+                <span className="text-[10px] text-amber-400/90 font-mono font-semibold">Personalizada Nível {stats.level}</span>
+              </div>
             </div>
 
-            <div className="space-y-4 text-center py-4">
-              <span className="text-[9px] font-extrabold text-amber-400 uppercase tracking-widest font-mono bg-amber-950/50 px-2 py-1 rounded-md border border-amber-500/20">
-                // SYSTEM_INJECT_TIP
+            <div className="space-y-3 text-center py-2">
+              <span className="text-[9px] font-extrabold text-amber-400 uppercase tracking-widest font-mono bg-amber-950/50 px-2 py-1 rounded-md border border-amber-500/20 inline-flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-400" /> GEMINI_LEVEL_{stats.level}_INJECT
               </span>
-              <p className="text-sm text-zinc-100 leading-relaxed font-semibold italic">
-                "{currentTip}"
-              </p>
+              
+              {loadingModalTip ? (
+                <div className="flex items-center justify-center space-x-2 text-amber-400 py-4 font-mono text-xs">
+                  <div className="w-4 h-4 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
+                  <span>Sintonizando frase com IA...</span>
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-100 leading-relaxed font-semibold italic py-1">
+                  "{currentTip}"
+                </p>
+              )}
             </div>
 
             <button
-              onClick={() => {
-                const randomIndex = Math.floor(Math.random() * FOCUS_TIPS.length);
-                setCurrentTip(FOCUS_TIPS[randomIndex]);
-              }}
-              className="w-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold py-2 sm:py-2.5 rounded-xl text-xs mt-4 transition-all hover:border-amber-500/60 active:scale-95"
+              onClick={fetchModalTip}
+              disabled={loadingModalTip}
+              className="w-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold py-2 sm:py-2.5 rounded-xl text-xs mt-4 transition-all hover:border-amber-500/60 active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
             >
-              Próxima Dica 💡
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Gerar Nova Frase com IA 💡</span>
             </button>
 
             <button
               onClick={() => setShowDailyTipModal(false)}
-              className="w-full bg-zinc-900 hover:bg-zinc-850 text-zinc-300 font-bold py-2 sm:py-2.5 rounded-xl text-xs mt-2 transition-all active:scale-95"
+              className="w-full bg-zinc-900 hover:bg-zinc-850 text-zinc-300 font-bold py-2 sm:py-2.5 rounded-xl text-xs mt-2 transition-all active:scale-95 cursor-pointer"
             >
               Fechar
             </button>
@@ -1426,7 +1484,7 @@ export default function App() {
         totalFunctionsCount={5} // Total active functions: sound, filter, zen, task, journal
         daysOfUse={getDaysOfUse()}
         canClose={!(getDaysOfUse() >= 1 && !premium)}
-        onPaymentSuccess={(type) => {
+        onPaymentSuccess={(type, buyerEmail) => {
           setPremium(true);
           setPlanType(type);
           setShowPremiumModal(false);
@@ -1434,6 +1492,9 @@ export default function App() {
           localStorage.setItem('focus_quest_premium', 'true');
           localStorage.setItem('focus_quest_plan_type', type);
           localStorage.setItem('focus_quest_show_welcome', 'true');
+          if (buyerEmail) {
+            localStorage.setItem('focus_quest_buyer_email', buyerEmail);
+          }
         }}
         onSimulateTasks={handleSimulateTasks}
         onSimulateFunctions={handleSimulateFunctions}

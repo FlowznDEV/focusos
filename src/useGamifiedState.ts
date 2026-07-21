@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Task, Achievement, UserStats, XPLog, Difficulty, TaskCategory, JournalEntry, LongTermGoal, Priority } from './types';
-import { playTaskCompleteSound, playLevelUpSound, playAchievementSound } from './lib/sound';
+import { playTaskCompleteSound, playLevelUpSound, playAchievementSound, playCancelSound } from './lib/sound';
 
 const DEFAULT_ACHIEVEMENTS: Achievement[] = [
   { id: 'first_step', title: 'Primeiro Passo', description: 'Conclua sua primeira tarefa diária', xpReward: 100, unlocked: false, icon: 'CheckCircle', conditionType: 'tasks', conditionValue: 1 },
@@ -265,6 +265,7 @@ export function useGamifiedState() {
 
   // Delete a task
   const deleteTask = useCallback((id: string) => {
+    playCancelSound();
     setTasks(prev => prev.filter(t => t.id !== id));
   }, []);
 
@@ -478,6 +479,7 @@ export function useGamifiedState() {
   }, []);
 
   const deleteJournalEntry = useCallback((id: string) => {
+    playCancelSound();
     setJournalEntries(prev => prev.filter(entry => entry.id !== id));
   }, []);
 
@@ -516,6 +518,7 @@ export function useGamifiedState() {
   }, []);
 
   const deleteLongTermGoal = useCallback((id: string) => {
+    playCancelSound();
     setLongTermGoals(prev => prev.filter(g => g.id !== id));
   }, []);
 

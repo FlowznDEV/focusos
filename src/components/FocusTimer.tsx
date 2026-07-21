@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Brain, Coffee, Flame, Volume2, VolumeX } from 'lucide-react';
+import { playCancelSound } from '../lib/sound';
 
 interface FocusTimerProps {
   onFocusComplete: (minutes: number) => void;
@@ -38,6 +39,9 @@ export default function FocusTimer({ onFocusComplete, currentTaskTitle, soundEna
 
   // Adjust timer when preset changes
   useEffect(() => {
+    if (isActive) {
+      playCancelSound();
+    }
     setIsActive(false);
     setSecondsLeft(preset * 60);
   }, [preset]);
@@ -96,6 +100,9 @@ export default function FocusTimer({ onFocusComplete, currentTaskTitle, soundEna
   };
 
   const resetTimer = () => {
+    if (isActive) {
+      playCancelSound();
+    }
     setIsActive(false);
     setSecondsLeft(preset * 60);
   };

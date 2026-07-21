@@ -4,7 +4,7 @@ import { Sparkles, Mail, Lock, LogIn, UserPlus, ArrowRight, ShieldCheck, Databas
 import { playTypeSound } from '../lib/sound';
 
 interface LoginScreenProps {
-  onLoginSuccess: (email: string, token: string) => void;
+  onLoginSuccess: (email: string, token: string, premium?: boolean, planType?: string | null) => void;
   onPlayOffline: () => void;
 }
 
@@ -62,7 +62,7 @@ export default function LoginScreen({ onLoginSuccess, onPlayOffline }: LoginScre
         setPassword('');
       } else {
         if (data.success && data.user) {
-          onLoginSuccess(data.user.email, data.user.token);
+          onLoginSuccess(data.user.email, data.user.token, data.user.premium, data.user.planType);
         } else {
           throw new Error('Formato de resposta do servidor inválido.');
         }
@@ -75,7 +75,7 @@ export default function LoginScreen({ onLoginSuccess, onPlayOffline }: LoginScre
   };
 
   return (
-    <div className="relative min-h-screen bg-[#030305] text-zinc-100 flex items-center justify-center p-4 overflow-hidden select-none font-sans">
+    <div className="relative min-h-screen bg-[#05060a] text-zinc-100 flex items-center justify-center p-4 overflow-hidden select-none font-sans">
       {/* GLOWS & BACKGROUND NEON ANIMATIONS */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-emerald-500/10 rounded-full blur-[120px] animate-pulse pointer-events-none" style={{ animationDuration: '8s' }} />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-[140px] animate-pulse pointer-events-none" style={{ animationDuration: '12s' }} />
@@ -115,7 +115,7 @@ export default function LoginScreen({ onLoginSuccess, onPlayOffline }: LoginScre
               JORNADA MENTAL RPG
             </span>
             <h1 className="text-3xl font-black tracking-tighter text-white mt-3 uppercase">
-              Foco Gamificado
+              FocusOS
             </h1>
             <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto leading-relaxed">
               Enfrente a procrastinação, ganhe XP de verdade e suba de nível com a sua conta integrada.
@@ -231,21 +231,13 @@ export default function LoginScreen({ onLoginSuccess, onPlayOffline }: LoginScre
           </div>
         </motion.div>
 
-        {/* OFFLINE / SKIP BACKUP OPTION */}
+        {/* INFO FOOTER */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.8 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="text-center mt-6 space-y-3"
+          className="text-center mt-6"
         >
-          <button
-            onClick={() => { playTypeSound(); onPlayOffline(); }}
-            className="inline-flex items-center space-x-1.5 text-xs text-zinc-500 hover:text-zinc-300 font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Continuar sem login (Modo Offline Local)</span>
-          </button>
-          
           <div className="flex items-center justify-center gap-4 text-[10px] text-zinc-600 font-medium">
             <span className="flex items-center gap-1">
               <Database className="w-3 h-3 text-emerald-500/60" /> Banco de dados Integrado

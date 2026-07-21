@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGamifiedState, getXPForNextLevel } from './useGamifiedState';
 import { Task } from './types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -13,6 +13,8 @@ import ShareCardModal from './components/ShareCardModal';
 import JournalTab from './components/JournalTab';
 import LongTermGoals from './components/LongTermGoals';
 import LoginScreen from './components/LoginScreen';
+import PremiumModal from './components/PremiumModal';
+import PremiumWelcome from './components/PremiumWelcome';
 import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound } from './lib/sound';
 
@@ -60,6 +62,87 @@ export default function App() {
   const [isOfflineMode, setIsOfflineMode] = useState(() => {
     return localStorage.getItem('focus_quest_offline_mode') === 'true';
   });
+
+  // Premium & Purchase states
+  const [premium, setPremium] = useState<boolean>(() => {
+    return localStorage.getItem('focus_quest_premium') === 'true';
+  });
+  const [planType, setPlanType] = useState<string | null>(() => {
+    return localStorage.getItem('focus_quest_plan_type');
+  });
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState<boolean>(() => {
+    return localStorage.getItem('focus_quest_show_welcome') === 'true';
+  });
+  const [showPremiumModal, setShowPremiumModal] = useState<boolean>(false);
+
+  // App functions tracked for premium eligibility
+  const [usedFunctions, setUsedFunctions] = useState<string[]>(() => {
+    const saved = localStorage.getItem('focus_quest_used_functions');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const trackFunctionUsed = useCallback((func: string) => {
+    setUsedFunctions(prev => {
+      if (prev.includes(func)) return prev;
+      const updated = [...prev, func];
+      localStorage.setItem('focus_quest_used_functions', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  // Account creation/usage date
+  const [firstUsedAt] = useState<string>(() => {
+    let saved = localStorage.getItem('focus_quest_first_used_at');
+    if (!saved) {
+      saved = new Date().toISOString();
+      localStorage.setItem('focus_quest_first_used_at', saved);
+    }
+    return saved;
+  });
+
+  const [simulatedDays, setSimulatedDays] = useState<number>(() => {
+    const saved = localStorage.getItem('focus_quest_simulated_days');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const getDaysOfUse = () => {
+    const firstUsedDate = new Date(firstUsedAt);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - firstUsedDate.getTime());
+    const realDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return realDays + simulatedDays;
+  };
+
+  // Listen to Stripe payment success redirect URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get('payment_success');
+    const type = params.get('plan_type');
+    const paramEmail = params.get('email');
+
+    if (success === 'true') {
+      const activeEmail = paramEmail || session?.email || 'usuario.teste@focusquest.com';
+      const targetPlan = type || 'monthly';
+      
+      setPremium(true);
+      setPlanType(targetPlan);
+      setShowWelcomeScreen(true);
+      
+      localStorage.setItem('focus_quest_premium', 'true');
+      localStorage.setItem('focus_quest_plan_type', targetPlan);
+      localStorage.setItem('focus_quest_show_welcome', 'true');
+
+      // Update backend premium status
+      fetch('/api/user/premium-success', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: activeEmail, planType: targetPlan })
+      }).catch(err => console.error("Error updating backend premium status:", err));
+
+      // Clean parameters in window location
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [session]);
 
   // Cloud Sync Status states
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
@@ -170,6 +253,7 @@ export default function App() {
     const randomIndex = Math.floor(Math.random() * FOCUS_TIPS.length);
     setCurrentTip(FOCUS_TIPS[randomIndex]);
     setShowDailyTipModal(true);
+    trackFunctionUsed('tip');
   };
 
   // Lock active tab to 'tasks' when in Zen Mode
@@ -178,6 +262,18 @@ export default function App() {
       setActiveMainTab('tasks');
     }
   }, [zenMode]);
+
+  // Lock body scroll and set viewport styling when Cloud Conflict Resolver Modal is active
+  useEffect(() => {
+    if (cloudConflict) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [cloudConflict]);
 
 
 
@@ -270,6 +366,44 @@ export default function App() {
     const nextVal = !soundEnabled;
     setSoundEnabled(nextVal);
     setGlobalSoundEnabled(nextVal);
+    trackFunctionUsed('sound');
+  };
+
+  const handleAddTaskWrapper = (
+    title: string,
+    description: string,
+    difficulty: any,
+    category: any,
+    estimatedFocusPomodoros: number,
+    priority?: any
+  ) => {
+    trackFunctionUsed('task');
+    return addTask(title, description, difficulty, category, priority, estimatedFocusPomodoros);
+  };
+
+  const handleAddJournalEntryWrapper = (mood: string, notes: string) => {
+    trackFunctionUsed('journal');
+    return addJournalEntry(mood, notes);
+  };
+
+  const handleSimulateTasks = () => {
+    for (let i = 1; i <= 5; i++) {
+      const t = addTask(`Missão Simulada #${i}`, 'Simulação de Upgrade Premium', 'easy', 'work', 'medium', 1);
+      if (t && t.id) {
+        toggleTaskCompletion(t.id);
+      }
+    }
+  };
+
+  const handleSimulateFunctions = () => {
+    const allFuncs = ['sound', 'filter', 'zen', 'task', 'journal'];
+    setUsedFunctions(allFuncs);
+    localStorage.setItem('focus_quest_used_functions', JSON.stringify(allFuncs));
+  };
+
+  const handleSimulateDays = () => {
+    setSimulatedDays(1);
+    localStorage.setItem('focus_quest_simulated_days', '1');
   };
 
   const xpNeeded = getXPForNextLevel(stats.level);
@@ -289,16 +423,42 @@ export default function App() {
 
   const activeTaskTitle = selectedTask && !selectedTask.completed ? selectedTask.title : undefined;
 
+  // Welcome screen gating for premium customers
+  if (showWelcomeScreen) {
+    return (
+      <PremiumWelcome
+        planType={planType}
+        onEnterApp={() => {
+          setShowWelcomeScreen(false);
+          localStorage.setItem('focus_quest_show_welcome', 'false');
+        }}
+      />
+    );
+  }
+
   // If the user has not logged in and is not in offline mode, show Login Screen
   if (!session && !isOfflineMode) {
     return (
       <LoginScreen
-        onLoginSuccess={async (email, token) => {
+        onLoginSuccess={async (email, token, userPremium, userPlanType) => {
           const newSession = { email, token };
           setSession(newSession);
           localStorage.setItem('focus_quest_user_session', JSON.stringify(newSession));
           localStorage.setItem('focus_quest_offline_mode', 'false');
           setIsOfflineMode(false);
+          
+          if (userPremium) {
+            setPremium(true);
+            localStorage.setItem('focus_quest_premium', 'true');
+            if (userPlanType) {
+              setPlanType(userPlanType);
+              localStorage.setItem('focus_quest_plan_type', userPlanType);
+            }
+          } else {
+            setPremium(false);
+            localStorage.removeItem('focus_quest_premium');
+            localStorage.removeItem('focus_quest_plan_type');
+          }
           
           try {
             setSyncStatus('syncing');
@@ -430,28 +590,28 @@ export default function App() {
       <header className="bg-zinc-950 border-b border-zinc-900 sticky top-0 z-40 backdrop-blur-md">
         <div className="w-full px-4 sm:px-6 md:px-8 py-3">
           {/* Main top header flex container */}
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-2 md:gap-4">
             
             {/* Logo area - Sleek & Ultra Minimalist with Supabase Integration */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center space-x-2 group cursor-pointer" onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}>
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 group cursor-pointer" onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}>
                 <div className="w-8 h-8 bg-zinc-900 border border-zinc-800 rounded-lg flex items-center justify-center transition-all duration-300 hover:border-zinc-700 shrink-0">
                   <Sparkles className="w-4 h-4 text-zinc-300 group-hover:text-white transition-colors" />
                 </div>
-                <span className="text-[11px] font-bold tracking-widest text-zinc-400 group-hover:text-zinc-200 uppercase font-mono">JORNADA</span>
+                <span className="text-[11px] font-bold tracking-widest text-zinc-400 group-hover:text-zinc-200 uppercase font-mono hidden sm:inline">JORNADA</span>
               </div>
 
               {/* Session Pill */}
               {session ? (
-                <div className="flex items-center space-x-2 bg-emerald-950/20 border border-emerald-950/40 rounded-xl px-3 py-1 text-[10px] text-emerald-400 font-mono font-bold max-w-[150px] sm:max-w-xs shrink-1">
+                <div className="flex items-center space-x-1 bg-emerald-950/20 border border-emerald-950/40 rounded-xl px-2 py-1 sm:px-3 sm:py-1 text-[10px] text-emerald-400 font-mono font-bold max-w-[110px] xs:max-w-[140px] sm:max-w-xs shrink-1">
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
-                  <span className="truncate hidden md:inline max-w-[120px]">{session.email}</span>
+                  <span className="truncate max-w-[45px] xs:max-w-[70px] sm:max-w-[120px]">{session.email}</span>
                   {syncStatus === 'syncing' ? (
-                    <span className="text-[9px] text-zinc-500 italic animate-pulse shrink-0">Sincronizando...</span>
+                    <span className="text-[9px] text-zinc-500 italic animate-pulse shrink-0 hidden sm:inline">...</span>
                   ) : syncStatus === 'synced' ? (
-                    <span className="text-[9px] text-emerald-500 font-bold tracking-wider shrink-0">// SALVO</span>
+                    <span className="text-[9px] text-emerald-500 font-bold tracking-wider shrink-0 hidden sm:inline">// SALVO</span>
                   ) : syncStatus === 'error' ? (
-                    <span className="text-[9px] text-rose-500 font-bold shrink-0">// ERRO</span>
+                    <span className="text-[9px] text-rose-500 font-bold shrink-0 hidden sm:inline">// ERRO</span>
                   ) : null}
                   <button
                     onClick={() => {
@@ -460,13 +620,13 @@ export default function App() {
                       setSession(null);
                       window.location.reload();
                     }}
-                    className="ml-2 text-zinc-500 hover:text-white font-black text-[9px] uppercase border-l border-emerald-950/50 pl-2 cursor-pointer shrink-0"
+                    className="ml-1 text-zinc-500 hover:text-white font-black text-[9px] uppercase border-l border-emerald-950/50 pl-1.5 cursor-pointer shrink-0"
                   >
                     Sair
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-2 bg-zinc-900 border border-zinc-850 rounded-xl px-2.5 py-1 text-[9px] font-mono font-bold text-zinc-400">
+                <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-850 rounded-xl px-2 py-1 text-[9px] font-mono font-bold text-zinc-400">
                   <span className="hidden md:inline">Offline Local</span>
                   <button
                     onClick={() => {
@@ -482,47 +642,37 @@ export default function App() {
               )}
 
               {/* Day/Night Theme pill */}
-              <div 
-                className={`flex items-center space-x-1.5 border rounded-xl px-2.5 py-1 text-[9px] font-mono font-bold transition-all duration-500 shrink-0 ${
+              <button 
+                onClick={() => { playTypeSound(); setIsNight(!isNight); trackFunctionUsed('filter'); }}
+                className={`flex items-center justify-center border rounded-xl w-9 h-9 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 text-[9px] font-mono font-bold transition-all duration-500 shrink-0 cursor-pointer ${
                   isNight 
-                    ? 'bg-indigo-950/20 border-indigo-500/20 text-indigo-400' 
-                    : 'bg-amber-950/20 border-amber-500/20 text-amber-400'
+                    ? 'bg-indigo-950/20 border-indigo-500/20 text-indigo-400 hover:border-indigo-500/50' 
+                    : 'bg-amber-950/20 border-amber-500/20 text-amber-400 hover:border-amber-500/50'
                 }`}
-                title={isNight ? "Filtro Noturno Ativo: Brilho reduzido" : "Filtro Diurno Ativo: Alto Contraste"}
+                title={isNight ? "Filtro Noturno Ativo: Clique para mudar" : "Filtro Diurno Ativo: Clique para mudar"}
               >
-                {isNight ? <Moon className="w-3 h-3 text-indigo-400 animate-pulse" /> : <Sun className="w-3 h-3 text-amber-400" />}
-                <span className="hidden sm:inline uppercase tracking-widest">{isNight ? "Leitura Noturna" : "Contraste Diurno"}</span>
-              </div>
+                {isNight ? <Moon className="w-3.5 h-3.5 text-indigo-400 animate-pulse" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+                <span className="hidden md:inline ml-1.5 uppercase tracking-widest">{isNight ? "Filtro Noturno" : "Filtro Diurno"}</span>
+              </button>
             </div>
 
             {/* Quick Action buttons */}
-            <div className="flex items-center space-x-2 shrink-0">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
               {/* Sound Toggle */}
               <button
                 onClick={handleToggleSound}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-100 w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-100 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
                 title={soundEnabled ? "Desativar efeitos sonoros" : "Ativar efeitos sonoros"}
               >
                 {soundEnabled ? <Volume2 className="w-4 h-4 text-zinc-300" /> : <VolumeX className="w-4 h-4 text-zinc-500" />}
                 <span className="hidden sm:inline ml-1.5 font-medium">{soundEnabled ? "Sons" : "Mudo"}</span>
               </button>
 
-              {/* Focus Tip of the Day Button */}
-              <button
-                id="show-tip-modal-btn"
-                onClick={handleOpenTipModal}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-100 w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
-                title="Dica de Foco do Dia"
-              >
-                <Lightbulb className="w-4 h-4 text-zinc-300" />
-                <span className="hidden sm:inline ml-1.5 font-medium">Dica</span>
-              </button>
-
               {/* Zen Mode Button */}
               <button
                 id="toggle-zen-mode-btn"
-                onClick={() => { setZenMode(!zenMode); playTypeSound(); }}
-                className={`flex items-center justify-center border w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm ${
+                onClick={() => { setZenMode(!zenMode); playTypeSound(); trackFunctionUsed('zen'); }}
+                className={`flex items-center justify-center border w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm ${
                   zenMode 
                     ? 'bg-zinc-850 border-zinc-700 text-white' 
                     : 'border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200'
@@ -533,15 +683,33 @@ export default function App() {
                 <span className="hidden sm:inline ml-1.5 font-medium">{zenMode ? "Modo Zen" : "Modo Zen"}</span>
               </button>
 
-              {/* Help/Info Button */}
-              <button
-                onClick={() => { setShowHelpModal(true); playTypeSound(); }}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-100 w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
-                title="Como funciona"
-              >
-                <HelpCircle className="w-4 h-4 text-zinc-400 hover:text-zinc-200 transition-colors" />
-                <span className="hidden sm:inline ml-1.5 font-medium font-sans">Ajuda</span>
-              </button>
+              {/* Premium RPG Upgrade Button / Active Status crown */}
+              {!premium ? (
+                <button
+                  id="upgrade-premium-rpg-btn"
+                  onClick={() => { playTypeSound(); setShowPremiumModal(true); }}
+                  className="relative flex items-center justify-center bg-gradient-to-r from-amber-600/20 via-yellow-600/20 to-amber-600/20 hover:from-amber-600/30 hover:to-yellow-500/30 border border-amber-500/30 hover:border-amber-400/50 text-amber-400 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.05)]"
+                  title="Upgrade Premium RPG"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+                  <span className="hidden sm:inline ml-1.5 font-bold font-mono">Premium RPG</span>
+                  {/* Glowing eligibility indicator dot if ALL conditions are met! */}
+                  {(stats.totalTasksCompleted >= 5 && usedFunctions.filter(f => ['sound', 'filter', 'zen', 'task', 'journal'].includes(f)).length >= 5 && getDaysOfUse() >= 1) && (
+                    <>
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping pointer-events-none" />
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-zinc-950 pointer-events-none" />
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div 
+                  className="flex items-center justify-center bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 text-amber-400 px-3 py-2 rounded-xl text-xs font-bold font-mono tracking-widest uppercase shadow-[0_0_10px_rgba(245,158,11,0.03)]"
+                  title="Status Premium: Ativo"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="hidden sm:inline ml-1.5 text-[9px] font-black font-mono tracking-wider">// PREMIUM</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -771,7 +939,7 @@ export default function App() {
                     <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
                       <TaskList
                         tasks={tasks}
-                        addTask={addTask}
+                        addTask={handleAddTaskWrapper}
                         deleteTask={deleteTask}
                         toggleTaskCompletion={toggleTaskCompletion}
                         selectedTaskId={selectedTask?.id || null}
@@ -841,7 +1009,7 @@ export default function App() {
               <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
                 <JournalTab
                   entries={journalEntries}
-                  onAddEntry={addJournalEntry}
+                  onAddEntry={handleAddJournalEntryWrapper}
                   onDeleteEntry={deleteJournalEntry}
                   currentFocusTaskTitle={activeTaskTitle}
                 />
@@ -1127,8 +1295,8 @@ export default function App() {
 
       {/* Cloud Conflict Resolver Modal */}
       {cloudConflict && (
-        <div className="fixed inset-0 bg-[#030305]/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-emerald-500/30 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(16,185,129,0.15)] relative overflow-hidden flex flex-col text-center">
+        <div className="fixed inset-0 bg-[#030305]/95 backdrop-blur-md z-[9999] flex items-start justify-center p-4 overflow-hidden">
+          <div className="bg-zinc-950 border border-emerald-500/30 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(16,185,129,0.15)] relative overflow-hidden flex flex-col text-center mt-12 sm:mt-24">
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-indigo-500 to-emerald-500" />
             
             <div className="w-16 h-16 bg-emerald-950/40 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-400">
@@ -1137,7 +1305,7 @@ export default function App() {
 
             <h3 className="text-sm font-black text-white uppercase tracking-tight">Sincronização de Progresso</h3>
             <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-              Encontramos dados salvos na nuvem do Supabase! Escolha o que fazer com seu progresso:
+              Encontramos dados salvos na nuvem! Escolha o que fazer com seu progresso:
             </p>
 
             <div className="mt-6 space-y-3">
@@ -1155,7 +1323,7 @@ export default function App() {
                 className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 shadow-[0_4px_15px_rgba(16,185,129,0.25)] flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ArrowDownCircle className="w-4 h-4" />
-                <span>Baixar Progresso do Supabase</span>
+                <span>Baixar progresso da nuvem</span>
               </button>
 
               {/* Option B: Upload Local */}
@@ -1198,6 +1366,33 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Premium presentation & checkout dialog modal */}
+      <PremiumModal
+        isOpen={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        email={session?.email || 'usuario.teste@focusquest.com'}
+        stats={{
+          totalTasksCompleted: stats.totalTasksCompleted,
+          level: stats.level,
+          streak: stats.streak
+        }}
+        usedFunctionsCount={usedFunctions.filter(f => ['sound', 'filter', 'zen', 'task', 'journal'].includes(f)).length}
+        totalFunctionsCount={5} // Total active functions: sound, filter, zen, task, journal
+        daysOfUse={getDaysOfUse()}
+        onPaymentSuccess={(type) => {
+          setPremium(true);
+          setPlanType(type);
+          setShowPremiumModal(false);
+          setShowWelcomeScreen(true);
+          localStorage.setItem('focus_quest_premium', 'true');
+          localStorage.setItem('focus_quest_plan_type', type);
+          localStorage.setItem('focus_quest_show_welcome', 'true');
+        }}
+        onSimulateTasks={handleSimulateTasks}
+        onSimulateFunctions={handleSimulateFunctions}
+        onSimulateDays={handleSimulateDays}
+      />
 
     </div>
   );

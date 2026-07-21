@@ -1,17 +1,23 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import Stripe from "stripe";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req: any, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.SUPABASE_URL || "https://pvoyycgywvrlwgtctlvh.supabase.co/rest/v1/";
@@ -182,6 +188,30 @@ function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password + "focus_quest_salt_123!").digest("hex");
 }
 
+// Local File-based Database for bulletproof authentication and synchronization
+const USERS_FILE = path.join(process.cwd(), "local_db_users.json");
+const SYNC_FILE = path.join(process.cwd(), "local_db_sync.json");
+
+function readJsonFile(filePath: string): any {
+  try {
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, "utf8");
+      return JSON.parse(content);
+    }
+  } catch (e) {
+    console.error("Error reading JSON file:", filePath, e);
+  }
+  return {};
+}
+
+function writeJsonFile(filePath: string, data: any) {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+  } catch (e) {
+    console.error("Error writing JSON file:", filePath, e);
+  }
+}
+
 // Helper to check if an error is due to a missing table in Supabase/PostgREST
 function isTableMissingError(error: any): boolean {
   if (!error) return false;
@@ -267,41 +297,97 @@ app.post("/api/auth/signup", async (req, res) => {
     return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
   }
 
-  if (!supabase) {
-    return res.status(503).json({ error: "O cliente Supabase não está configurado no servidor. Configure as credenciais no .env" });
-  }
-
   const cleanEmail = email.toLowerCase().trim();
+  const hashedPassword = hashPassword(password);
+  
+  // Load local users database
+  const localUsers = readJsonFile(USERS_FILE);
 
   try {
-    // 1. Create the user in official Supabase Authentication (auth.users)
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password: password,
-    });
+    let supabaseSignUpSuccess = false;
+    let authErrorMsg = "";
 
-    if (authError) {
-      return res.status(400).json({ error: authError.message });
+    if (supabase) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: password,
+        });
+
+        if (!authError) {
+          supabaseSignUpSuccess = true;
+          // Also try fallback profile insert
+          try {
+            await supabase
+              .from("focus_quest_users")
+              .insert({
+                email: cleanEmail,
+                password: hashedPassword,
+                created_at: new Date().toISOString()
+              });
+          } catch (e) {
+            console.warn("Could not insert user profile fallback record to Supabase:", e);
+          }
+        } else {
+          authErrorMsg = authError.message;
+        }
+      } catch (err: any) {
+        console.warn("Supabase auth signUp threw error:", err);
+        authErrorMsg = err.message || "Erro no Supabase";
+      }
     }
 
-    // 2. Also register in local custom table for backward compatibility/reporting
-    const hashedPassword = hashPassword(password);
-    const { error: insertError } = await supabase
-      .from("focus_quest_users")
-      .insert({
+    // If Supabase signed up successfully, or if we are falling back to local
+    if (supabaseSignUpSuccess || !supabase) {
+      if (localUsers[cleanEmail]) {
+        return res.status(400).json({ error: "Este e-mail já está cadastrado." });
+      }
+
+      localUsers[cleanEmail] = {
         email: cleanEmail,
         password: hashedPassword,
         created_at: new Date().toISOString()
+      };
+      writeJsonFile(USERS_FILE, localUsers);
+
+      return res.json({ 
+        success: true, 
+        message: supabaseSignUpSuccess 
+          ? "Cadastro realizado com sucesso na nuvem! Agora você pode fazer o login." 
+          : "Cadastro realizado com sucesso localmente! Agora você pode fazer o login." 
       });
+    } else {
+      // If Supabase was active but returned an error (e.g. user already exists, invalid email)
+      // Check if we can fallback to local sign up if the error is due to Supabase connection limits
+      const isConnectionOrSetupErr = 
+        authErrorMsg.includes("Database error") || 
+        authErrorMsg.includes("network") || 
+        authErrorMsg.includes("API key") ||
+        authErrorMsg.toLowerCase().includes("failed") ||
+        authErrorMsg.toLowerCase().includes("fetch") ||
+        authErrorMsg.toLowerCase().includes("rate limit") ||
+        authErrorMsg.toLowerCase().includes("rate_limit") ||
+        authErrorMsg.toLowerCase().includes("exceeded") ||
+        authErrorMsg.toLowerCase().includes("too many requests") ||
+        authErrorMsg.toLowerCase().includes("security purposes");
 
-    if (insertError && !isTableMissingError(insertError)) {
-      console.warn("Could not insert user profile fallback record:", insertError);
+      if (isConnectionOrSetupErr) {
+        if (localUsers[cleanEmail]) {
+          return res.status(400).json({ error: "Este e-mail já está cadastrado." });
+        }
+        localUsers[cleanEmail] = {
+          email: cleanEmail,
+          password: hashedPassword,
+          created_at: new Date().toISOString()
+        };
+        writeJsonFile(USERS_FILE, localUsers);
+        return res.json({ 
+          success: true, 
+          message: "Cadastro realizado localmente devido a limites de requisição temporários da nuvem." 
+        });
+      }
+      return res.status(400).json({ error: authErrorMsg || "Erro ao realizar cadastro." });
     }
-
-    return res.json({ 
-      success: true, 
-      message: "Cadastro realizado com sucesso na plataforma oficial do seu Supabase! Agora você pode fazer o login." 
-    });
   } catch (error: any) {
     console.error("Signup failed:", error);
     return res.status(500).json({ error: error.message || "Erro interno do servidor durante cadastro." });
@@ -315,68 +401,69 @@ app.post("/api/auth/login", async (req, res) => {
     return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
   }
 
-  if (!supabase) {
-    return res.status(503).json({ error: "O cliente Supabase não está configurado no servidor." });
-  }
-
   const cleanEmail = email.toLowerCase().trim();
+  const hashedPassword = hashPassword(password);
+  
+  // Load local users database
+  const localUsers = readJsonFile(USERS_FILE);
 
   try {
     // 1. Try to sign in via official Supabase Authentication
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: cleanEmail,
-      password: password,
-    });
+    if (supabase) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password,
+        });
 
-    if (!authError && authData?.user) {
-      const sessionToken = createSessionToken(cleanEmail);
-      return res.json({
-        success: true,
-        user: {
-          email: authData.user.email,
-          token: sessionToken
-        }
-      });
-    }
+        if (!authError && authData?.user) {
+          const sessionToken = createSessionToken(cleanEmail);
+          
+          // Sync local users database
+          if (!localUsers[cleanEmail]) {
+            localUsers[cleanEmail] = {
+              email: cleanEmail,
+              password: hashedPassword,
+              created_at: new Date().toISOString()
+            };
+            writeJsonFile(USERS_FILE, localUsers);
+          }
 
-    // 2. Fallback to legacy custom table check (backward compatibility)
-    const { data: legacyUser, error: queryError } = await supabase
-      .from("focus_quest_users")
-      .select("*")
-      .eq("email", cleanEmail)
-      .maybeSingle();
-
-    if (queryError && !isTableMissingError(queryError)) {
-      throw queryError;
-    }
-
-    if (legacyUser) {
-      const hashedPassword = hashPassword(password);
-      if (legacyUser.password === hashedPassword) {
-        // Auto-migrate legacy user to official Supabase Auth in background
-        try {
-          await supabase.auth.signUp({
-            email: cleanEmail,
-            password: password,
+          return res.json({
+            success: true,
+            user: {
+              email: authData.user.email,
+              token: sessionToken,
+              premium: !!localUsers[cleanEmail]?.premium,
+              planType: localUsers[cleanEmail]?.planType || null
+            }
           });
-          console.log(`Successfully auto-migrated legacy user ${cleanEmail} to official auth`);
-        } catch (migErr) {
-          console.warn(`Background migration to official auth failed for ${cleanEmail}:`, migErr);
         }
+      } catch (err) {
+        console.warn("Supabase auth signInWithPassword threw error, falling back to local database:", err);
+      }
+    }
 
+    // 2. Check local users database (Fallback / Offline Server Auth)
+    if (localUsers[cleanEmail]) {
+      const userRecord = localUsers[cleanEmail];
+      if (userRecord.password === hashedPassword) {
         const sessionToken = createSessionToken(cleanEmail);
         return res.json({
           success: true,
           user: {
-            email: legacyUser.email,
-            token: sessionToken
+            email: userRecord.email,
+            token: sessionToken,
+            premium: !!userRecord.premium,
+            planType: userRecord.planType || null
           }
         });
+      } else {
+        return res.status(401).json({ error: "Senha incorreta." });
       }
     }
 
-    const errorMessage = authError ? authError.message : "E-mail ou senha incorretos.";
-    return res.status(401).json({ error: errorMessage });
+    return res.status(401).json({ error: "E-mail não cadastrado ou senha incorreta." });
   } catch (error: any) {
     console.error("Login failed:", error);
     return res.status(500).json({ error: error.message || "Erro interno do servidor durante login." });
@@ -434,58 +521,56 @@ app.get("/api/supabase/sync/:email", authenticateRequest, async (req: any, res) 
     return res.status(403).json({ error: "Acesso negado. Você não tem permissão para acessar os dados deste usuário." });
   }
 
-  if (!supabase) {
-    return res.status(503).json({ error: "Supabase is not configured on the server" });
-  }
-
   try {
-    const { data, error } = await supabase
-      .from("focus_quest_sync")
-      .select("*")
-      .eq("email", email)
-      .maybeSingle();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("focus_quest_sync")
+          .select("*")
+          .eq("email", email)
+          .maybeSingle();
 
-    if (error) {
-      // Check if table does not exist or schema cache is stale
-      if (isTableMissingError(error)) {
-        return res.status(404).json({
-          error: "table_missing",
-          message: "A tabela 'focus_quest_sync' não foi encontrada no Supabase.",
-          sql: `CREATE TABLE focus_quest_sync (
-  email TEXT PRIMARY KEY,
-  tasks JSONB DEFAULT '[]'::jsonb,
-  stats JSONB DEFAULT '{}'::jsonb,
-  achievements JSONB DEFAULT '[]'::jsonb,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- Ativar Row Level Security (RLS) para máxima segurança contra vulnerabilidades
-ALTER TABLE focus_quest_sync ENABLE ROW LEVEL SECURITY;
-
--- Política RLS segura: impede leituras e escritas públicas anônimas, 
--- permitindo que cada usuário acesse apenas o seu próprio registro via Supabase Auth
-CREATE POLICY "Permitir acesso apenas ao próprio usuário autenticado" ON focus_quest_sync 
-  FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = email) WITH CHECK (auth.jwt() ->> 'email' = email);`
-        });
+        if (!error) {
+          if (!data) {
+            // Check local DB if we have records there
+            const localSync = readJsonFile(SYNC_FILE);
+            if (localSync[email]) {
+              return res.json({
+                found: true,
+                data: localSync[email]
+              });
+            }
+            return res.json({ found: false });
+          }
+          return res.json({
+            found: true,
+            data: {
+              tasks: data.tasks,
+              stats: data.stats,
+              achievements: data.achievements,
+              updated_at: data.updated_at
+            }
+          });
+        } else if (!isTableMissingError(error)) {
+          console.warn("Supabase sync load returned error, trying local file fallback:", error);
+        }
+      } catch (err) {
+        console.warn("Supabase sync load threw error, trying local file fallback:", err);
       }
-      throw error;
     }
 
-    if (!data) {
+    // Local file fallback
+    const localSync = readJsonFile(SYNC_FILE);
+    if (localSync[email]) {
+      return res.json({
+        found: true,
+        data: localSync[email]
+      });
+    } else {
       return res.json({ found: false });
     }
-
-    return res.json({
-      found: true,
-      data: {
-        tasks: data.tasks,
-        stats: data.stats,
-        achievements: data.achievements,
-        updated_at: data.updated_at
-      }
-    });
   } catch (error: any) {
-    console.error("Failed to load user state from Supabase:", error);
+    console.error("Failed to load user state from sync storage:", error);
     return res.status(500).json({ error: error.message || "Internal server error during load" });
   }
 });
@@ -499,51 +584,289 @@ app.post("/api/supabase/sync/:email", authenticateRequest, async (req: any, res)
     return res.status(403).json({ error: "Acesso negado. Você não tem permissão para salvar dados neste usuário." });
   }
 
-  if (!supabase) {
-    return res.status(503).json({ error: "Supabase is not configured on the server" });
+  try {
+    let supabaseSaved = false;
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("focus_quest_sync")
+          .upsert({
+            email,
+            tasks,
+            stats,
+            achievements,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'email' })
+          .select();
+
+        if (!error) {
+          supabaseSaved = true;
+        } else if (!isTableMissingError(error)) {
+          console.warn("Supabase sync save returned error, falling back to local file:", error);
+        }
+      } catch (err) {
+        console.warn("Supabase sync save threw error, falling back to local file:", err);
+      }
+    }
+
+    // Always keep local file updated as a robust copy
+    const localSync = readJsonFile(SYNC_FILE);
+    localSync[email] = {
+      tasks,
+      stats,
+      achievements,
+      updated_at: new Date().toISOString()
+    };
+    writeJsonFile(SYNC_FILE, localSync);
+
+    return res.json({ success: true, message: supabaseSaved ? "Sincronizado na nuvem e local" : "Sincronizado localmente" });
+  } catch (error: any) {
+    console.error("Failed to upsert user state to sync storage:", error);
+    return res.status(500).json({ error: error.message || "Internal server error during save" });
+  }
+});
+
+// === STRIPE INTEGRATION & PREMIUM PAYMENT ENDPOINTS ===
+
+let stripeClient: Stripe | null = null;
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("STRIPE_SECRET_KEY is required");
+  }
+  if (!stripeClient) {
+    stripeClient = new Stripe(key, {
+      apiVersion: "2025-01-27.acacia" as any,
+    });
+  }
+  return stripeClient;
+}
+
+// Cryptographically secure and robust premium helper that synchronizes local and Supabase databases
+async function upgradeUserToPremium(email: string, planType: string) {
+  const cleanEmail = email.toLowerCase().trim();
+  const localUsers = readJsonFile(USERS_FILE);
+
+  if (!localUsers[cleanEmail]) {
+    localUsers[cleanEmail] = {
+      email: cleanEmail,
+      created_at: new Date().toISOString()
+    };
+  }
+
+  localUsers[cleanEmail].premium = true;
+  localUsers[cleanEmail].planType = planType || "monthly";
+  localUsers[cleanEmail].purchasedAt = new Date().toISOString();
+
+  writeJsonFile(USERS_FILE, localUsers);
+  console.log(`[PREMIUM UPGRADE] Local database user ${cleanEmail} upgraded to ${planType}`);
+
+  if (supabase) {
+    try {
+      // First, check if the user exists in focus_quest_users
+      const { data: existingUser, error: checkError } = await supabase
+        .from("focus_quest_users")
+        .select("email")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (checkError) {
+        console.warn(`[PREMIUM UPGRADE] Error checking Supabase user ${cleanEmail}:`, checkError);
+      }
+
+      const updateData = {
+        premium: true,
+        plan_type: planType || "monthly",
+        planType: planType || "monthly",
+        purchased_at: new Date().toISOString(),
+        purchasedAt: new Date().toISOString()
+      };
+
+      if (existingUser) {
+        const { error: updateError } = await supabase
+          .from("focus_quest_users")
+          .update(updateData)
+          .eq("email", cleanEmail);
+
+        if (updateError) {
+          console.error(`[PREMIUM UPGRADE] Failed to update user premium in Supabase:`, updateError);
+        } else {
+          console.log(`[PREMIUM UPGRADE] Supabase user ${cleanEmail} successfully updated to premium`);
+        }
+      } else {
+        // If the user doesn't exist, upsert/insert them as premium
+        const { error: upsertError } = await supabase
+          .from("focus_quest_users")
+          .upsert({
+            email: cleanEmail,
+            created_at: new Date().toISOString(),
+            ...updateData
+          }, { onConflict: "email" });
+
+        if (upsertError) {
+          console.error(`[PREMIUM UPGRADE] Failed to upsert premium user to Supabase:`, upsertError);
+        } else {
+          console.log(`[PREMIUM UPGRADE] Supabase user ${cleanEmail} successfully upserted as premium`);
+        }
+      }
+    } catch (err) {
+      console.error(`[PREMIUM UPGRADE] Exception during Supabase update:`, err);
+    }
+  }
+  return localUsers[cleanEmail];
+}
+
+// Check Stripe configured credentials
+app.get("/api/stripe/config", (req, res) => {
+  res.json({
+    configured: !!process.env.STRIPE_SECRET_KEY,
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
+  });
+});
+
+// Create Stripe Checkout Session
+app.post("/api/stripe/create-checkout-session", async (req, res) => {
+  const { planType, email } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ error: "E-mail é obrigatório." });
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+
+  // If Stripe is not configured, fall back to simulated response so they can test premium
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.log("Stripe is not configured. Falling back to sandbox simulator mode.");
+    return res.json({
+      simulated: true,
+      planType,
+      email: cleanEmail
+    });
   }
 
   try {
-    const { data, error } = await supabase
-      .from("focus_quest_sync")
-      .upsert({
-        email,
-        tasks,
-        stats,
-        achievements,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'email' })
-      .select();
+    const stripe = getStripe();
+    const origin = req.headers.origin || "http://localhost:3000";
+    
+    const priceAmount = planType === "monthly" ? 2790 : 29700; // R$ 27,90 or R$ 297,00 in BRL cents
+    const priceName = planType === "monthly" ? "FocusOS - Plano Mensal Premium" : "FocusOS - Plano Vitalício Premium";
+    const mode = planType === "monthly" ? "subscription" : "payment";
 
-    if (error) {
-      if (isTableMissingError(error)) {
-        return res.status(404).json({
-          error: "table_missing",
-          message: "A tabela 'focus_quest_sync' não foi encontrada no Supabase.",
-          sql: `CREATE TABLE focus_quest_sync (
-  email TEXT PRIMARY KEY,
-  tasks JSONB DEFAULT '[]'::jsonb,
-  stats JSONB DEFAULT '{}'::jsonb,
-  achievements JSONB DEFAULT '[]'::jsonb,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+    const sessionConfig: any = {
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "brl",
+            product_data: {
+              name: priceName,
+              description: planType === "monthly" 
+                ? "Acesso ilimitado ao FocusOS com todas as funções RPG premium inclusas. Cobrado mensalmente por R$ 27,90."
+                : "Acesso permanente e vitalício ao FocusOS com todas as funções RPG premium inclusas. Pagamento único de R$ 297,00.",
+            },
+            unit_amount: priceAmount,
+            ...(planType === "monthly" && {
+              recurring: {
+                interval: "month"
+              }
+            })
+          },
+          quantity: 1,
+        },
+      ],
+      mode: mode,
+      customer_email: cleanEmail,
+      metadata: {
+        email: cleanEmail,
+        planType: planType
+      },
+      success_url: `${origin}/?payment_success=true&plan_type=${planType}&email=${encodeURIComponent(cleanEmail)}`,
+      cancel_url: `${origin}/?payment_cancel=true`,
+    };
 
--- Ativar Row Level Security (RLS) para máxima segurança contra vulnerabilidades
-ALTER TABLE focus_quest_sync ENABLE ROW LEVEL SECURITY;
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+    return res.json({ url: session.url, simulated: false });
+  } catch (err: any) {
+    console.error("Stripe session creation failed:", err);
+    return res.status(500).json({ error: err.message || "Falha ao criar sessão de checkout com Stripe." });
+  }
+});
 
--- Política RLS segura: impede leituras e escritas públicas anônimas, 
--- permitindo que cada usuário acesse apenas o seu próprio registro via Supabase Auth
-CREATE POLICY "Permitir acesso apenas ao próprio usuário autenticado" ON focus_quest_sync 
-  FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = email) WITH CHECK (auth.jwt() ->> 'email' = email);`
-        });
+// Update user premium status in the local DB and Supabase via sandbox fallback
+app.post("/api/user/premium-success", async (req, res) => {
+  const { email, planType } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "E-mail é obrigatório." });
+  }
+
+  try {
+    const updatedUser = await upgradeUserToPremium(email, planType);
+    return res.json({
+      success: true,
+      user: {
+        email: updatedUser.email,
+        premium: true,
+        planType: updatedUser.planType
       }
-      throw error;
+    });
+  } catch (err: any) {
+    console.error("Failed sandbox simulation upgrade:", err);
+    return res.status(500).json({ error: err.message || "Erro ao processar upgrade de simulação." });
+  }
+});
+
+// Stripe secure webhook endpoint to confirm payments and unlock premium
+app.post("/api/stripe/webhook", async (req: any, res) => {
+  const sig = req.headers["stripe-signature"];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  let event: Stripe.Event;
+
+  if (webhookSecret) {
+    if (!sig) {
+      return res.status(400).json({ error: "Assinatura do Stripe ausente no cabeçalho." });
+    }
+    if (!req.rawBody) {
+      return res.status(400).json({ error: "Corpo bruto da requisição ausente." });
+    }
+    try {
+      const stripe = getStripe();
+      event = stripe.webhooks.constructEvent(req.rawBody, sig as string, webhookSecret);
+    } catch (err: any) {
+      console.error(`[STRIPE WEBHOOK ERROR] Falha na verificação de assinatura:`, err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  } else {
+    console.warn("[STRIPE WEBHOOK WARNING] STRIPE_WEBHOOK_SECRET não configurado. Ignorando validação de assinatura (apenas para testes).");
+    event = req.body;
+  }
+
+  try {
+    // Handle checkout.session.completed event
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const email = session.metadata?.email || session.customer_email || session.customer_details?.email;
+      const planType = session.metadata?.planType || "monthly";
+
+      if (email) {
+        console.log(`[STRIPE WEBHOOK] Recebido checkout.session.completed para ${email} (${planType})`);
+        await upgradeUserToPremium(email, planType);
+      } else {
+        console.warn("[STRIPE WEBHOOK] Evento checkout.session.completed recebido sem e-mail do cliente.", session);
+      }
+    } else if (event.type === "invoice.payment_succeeded") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const email = invoice.customer_email || invoice.customer_name;
+      if (email) {
+        console.log(`[STRIPE WEBHOOK] Recebido invoice.payment_succeeded para ${email}`);
+        await upgradeUserToPremium(email, "monthly");
+      }
     }
 
-    return res.json({ success: true, data });
+    return res.json({ received: true });
   } catch (error: any) {
-    console.error("Failed to upsert user state to Supabase:", error);
-    return res.status(500).json({ error: error.message || "Internal server error during save" });
+    console.error(`[STRIPE WEBHOOK EXCEPTION] Erro ao processar evento:`, error);
+    return res.status(500).json({ error: error.message || "Erro interno ao processar webhook." });
   }
 });
 

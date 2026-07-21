@@ -369,7 +369,11 @@ app.post("/api/auth/signup", async (req, res) => {
         authErrorMsg.toLowerCase().includes("rate_limit") ||
         authErrorMsg.toLowerCase().includes("exceeded") ||
         authErrorMsg.toLowerCase().includes("too many requests") ||
-        authErrorMsg.toLowerCase().includes("security purposes");
+        authErrorMsg.toLowerCase().includes("security purposes") ||
+        authErrorMsg.toLowerCase().includes("unexpected token") ||
+        authErrorMsg.toLowerCase().includes("json") ||
+        authErrorMsg.toLowerCase().includes("valid") ||
+        authErrorMsg.toLowerCase().includes("parse");
 
       if (isConnectionOrSetupErr) {
         if (localUsers[cleanEmail]) {

@@ -84,7 +84,14 @@ export default function PremiumModal({
         })
       });
 
-      const data = await response.json();
+      let data: any = {};
+      const text = await response.text();
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        console.error("Failed to parse premium success response JSON:", parseErr);
+      }
+
       if (response.ok && data.success) {
         setShowSandbox(false);
         onPaymentSuccess(selectedPlan);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGamifiedState, getXPForNextLevel } from './useGamifiedState';
 import { Task } from './types';
+import { motion, AnimatePresence } from 'motion/react';
 import FocusTimer from './components/FocusTimer';
 import AICoach from './components/AICoach';
 import StatsDashboard from './components/StatsDashboard';
@@ -11,8 +12,22 @@ import DailyTip from './components/DailyTip';
 import ShareCardModal from './components/ShareCardModal';
 import JournalTab from './components/JournalTab';
 import LongTermGoals from './components/LongTermGoals';
-import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen } from 'lucide-react';
-import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled } from './lib/sound';
+import LoginScreen from './components/LoginScreen';
+import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check } from 'lucide-react';
+import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound } from './lib/sound';
+
+const FOCUS_TIPS = [
+  "A técnica Pomodoro (25 minutos de foco e 5 de descanso) ajuda a manter a mente fresca.",
+  "Experimente a regra dos 5 minutos: comprometa-se a fazer uma tarefa difícil por apenas 5 minutos. Geralmente, depois de começar, você continua.",
+  "Deixe seu celular em outro cômodo ou no modo 'Não Perturbe' antes de iniciar seu timer de foco.",
+  "Divida tarefas grandes em micro-metas ridiculamente fáceis para reduzir a ansiedade de começar.",
+  "Beba um copo de água antes de iniciar cada sessão de foco para manter o cérebro hidratado.",
+  "Organize sua mesa de trabalho: o minimalismo visual ajuda na clareza mental e no foco profundo.",
+  "Dizer 'não' para reuniões desnecessárias e distrações é a maior ferramenta de produtividade.",
+  "A respiração diafragmática profunda por 1 minuto acalma o sistema nervoso e melhora a concentração.",
+  "Não tente ser perfeito, foque no progresso consistente. Feito é melhor do que perfeito!",
+  "Foco é uma habilidade treinável. Quanto mais você pratica focar sem interrupções, mais forte ela fica."
+];
 
 export default function App() {
   const {
@@ -37,6 +52,69 @@ export default function App() {
     resetAllData
   } = useGamifiedState();
 
+  // Session & Authentication states
+  const [session, setSession] = useState<{ email: string; token: string } | null>(() => {
+    const saved = localStorage.getItem('focus_quest_user_session');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isOfflineMode, setIsOfflineMode] = useState(() => {
+    return localStorage.getItem('focus_quest_offline_mode') === 'true';
+  });
+
+  // Cloud Sync Status states
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [cloudConflict, setCloudConflict] = useState<{
+    tasks: any;
+    stats: any;
+    achievements: any;
+    updated_at: string;
+  } | null>(null);
+
+  // Auto-sync local state to Supabase on changes
+  useEffect(() => {
+    if (!session) return;
+    if (cloudConflict) return;
+
+    let active = true;
+    const syncData = async () => {
+      try {
+        setSyncStatus('syncing');
+        const res = await fetch(`/api/supabase/sync/${session.email}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.token}`
+          },
+          body: JSON.stringify({
+            tasks,
+            stats,
+            achievements
+          })
+        });
+        if (!res.ok) {
+          if (res.status === 401) {
+            setSession(null);
+            localStorage.removeItem('focus_quest_user_session');
+          }
+          throw new Error('Sync failed');
+        }
+        if (active) setSyncStatus('synced');
+      } catch (e) {
+        console.error("Auto-sync error:", e);
+        if (active) setSyncStatus('error');
+      }
+    };
+
+    const timer = setTimeout(() => {
+      syncData();
+    }, 4000);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [tasks, stats, achievements, session, cloudConflict]);
+
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const executeReset = () => {
@@ -50,6 +128,72 @@ export default function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(isSoundEnabled());
+
+  // Daily Focus Tip Modal State
+  const [showDailyTipModal, setShowDailyTipModal] = useState(false);
+  const [currentTip, setCurrentTip] = useState('');
+  const [zenMode, setZenMode] = useState(false);
+
+  const handleOpenTipModal = () => {
+    const randomIndex = Math.floor(Math.random() * FOCUS_TIPS.length);
+    setCurrentTip(FOCUS_TIPS[randomIndex]);
+    setShowDailyTipModal(true);
+  };
+
+  // Lock active tab to 'tasks' when in Zen Mode
+  useEffect(() => {
+    if (zenMode) {
+      setActiveMainTab('tasks');
+    }
+  }, [zenMode]);
+
+  // If the user has not logged in and is not in offline mode, show Login Screen
+  if (!session && !isOfflineMode) {
+    return (
+      <LoginScreen
+        onLoginSuccess={async (email, token) => {
+          const newSession = { email, token };
+          setSession(newSession);
+          localStorage.setItem('focus_quest_user_session', JSON.stringify(newSession));
+          localStorage.setItem('focus_quest_offline_mode', 'false');
+          setIsOfflineMode(false);
+          
+          try {
+            setSyncStatus('syncing');
+            const res = await fetch(`/api/supabase/sync/${email}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const body = await res.json();
+            if (res.ok && body.found && body.data) {
+              setCloudConflict(body.data);
+            } else {
+              setSyncStatus('syncing');
+              await fetch(`/api/supabase/sync/${email}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  tasks,
+                  stats,
+                  achievements
+                })
+              });
+              setSyncStatus('synced');
+            }
+          } catch (e) {
+            console.error("Conflict checking failed:", e);
+            setSyncStatus('error');
+          }
+        }}
+        onPlayOffline={() => {
+          setIsOfflineMode(true);
+          localStorage.setItem('focus_quest_offline_mode', 'true');
+        }}
+      />
+    );
+  }
 
   // Idle Notification State
   const [idleNotification, setIdleNotification] = useState<{
@@ -76,8 +220,8 @@ export default function App() {
     // Check periodically for idleness
     const interval = setInterval(() => {
       const idleTime = Date.now() - lastInteraction;
-      // 30 seconds threshold for a quick, responsive experience
-      const THRESHOLD = 30000; 
+      // 15 minutes threshold for a better, more balanced user experience
+      const THRESHOLD = 900000; 
 
       if (idleTime >= THRESHOLD) {
         setIdleNotification(prev => {
@@ -163,11 +307,9 @@ export default function App() {
     <div className="min-h-screen bg-[#05060a] text-zinc-100 pb-16 relative font-sans">
       
       {/* Confetti canvas animation container */}
-      <XPConfetti trigger={triggerConfetti} />
-
-      {/* Floating Smart Dynamic Notifications Toast */}
+          {/* Floating Smart Dynamic Notifications Toast */}
       {activeNotification && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full bg-zinc-950 text-zinc-100 rounded-2xl p-4 shadow-xl border border-zinc-800 flex items-start space-x-3 transition-all duration-300 animate-slide-up">
+        <div className="fixed bottom-20 md:bottom-5 left-4 right-4 md:left-auto md:right-5 z-50 max-w-[calc(100%-2rem)] md:max-w-sm w-full bg-zinc-950 text-zinc-100 rounded-2xl p-4 shadow-xl border border-zinc-800 flex items-start space-x-3 transition-all duration-300 animate-slide-up">
           <div className="bg-indigo-500/20 p-2 rounded-xl text-indigo-400 shrink-0 border border-indigo-500/30">
             {activeNotification.type === 'level_up' ? (
               <Award className="w-5 h-5 text-indigo-400" />
@@ -192,7 +334,7 @@ export default function App() {
 
       {/* Gentle Idle Attention Reminder Notification Toast */}
       {idleNotification && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full bg-zinc-950 border border-amber-500/30 rounded-2xl p-4 shadow-[0_0_20px_rgba(245,158,11,0.08)] flex items-start space-x-3.5 transition-all duration-300 animate-slide-up">
+        <div className="fixed bottom-20 md:bottom-5 left-4 right-4 md:left-auto md:right-5 z-50 max-w-[calc(100%-2rem)] md:max-w-sm w-full bg-zinc-950 border border-amber-500/30 rounded-2xl p-4 shadow-[0_0_20px_rgba(245,158,11,0.08)] flex items-start space-x-3.5 transition-all duration-300 animate-slide-up">
           <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-amber-400 shrink-0">
             <Brain className="w-5 h-5 animate-pulse" />
           </div>
@@ -225,308 +367,397 @@ export default function App() {
         </div>
       )}
 
-      {/* Decorative neon top laser edge inside header */}
-      <div className="h-[2px] w-full bg-gradient-to-r from-cyan-400 via-pink-500 to-cyan-400 animate-pulse absolute top-0 left-0 z-50" />
+      {/* Decorative ultra-minimalist subtle accent line instead of neon */}
+      <div className="h-[1px] w-full bg-zinc-850 absolute top-0 left-0 z-50" />
 
-      {/* Primary Header - Highly Polished & Adaptive HUD */}
-      <header className="bg-zinc-950/95 border-b border-zinc-900/80 backdrop-blur-md sticky top-0 z-40 shadow-xl transition-all duration-500">
-        <div className="w-full px-4 sm:px-6 md:px-8 py-3 sm:py-4">
+      {/* Primary Header - Fixed Minimalist & Elegant HUD */}
+      <header className="bg-zinc-950 border-b border-zinc-900 sticky top-0 z-40 backdrop-blur-md">
+        <div className="w-full px-4 sm:px-6 md:px-8 py-3">
           {/* Main top header flex container */}
           <div className="flex items-center justify-between gap-4">
             
-            {/* Logo area with rotating glowing elements */}
-            <div className="flex items-center space-x-3 group cursor-pointer">
-              <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)] group-hover:shadow-[0_0_25px_rgba(6,182,212,0.85)] group-hover:rotate-6 transition-all duration-300 shrink-0">
-                <span className="font-black text-xl text-zinc-950 group-hover:scale-110 transition-transform">F</span>
+            {/* Logo area - Sleek & Ultra Minimalist with Supabase Integration */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center space-x-2 group cursor-pointer" onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}>
+                <div className="w-8 h-8 bg-zinc-900 border border-zinc-800 rounded-lg flex items-center justify-center transition-all duration-300 hover:border-zinc-700 shrink-0">
+                  <Sparkles className="w-4 h-4 text-zinc-300 group-hover:text-white transition-colors" />
+                </div>
+                <span className="text-[11px] font-bold tracking-widest text-zinc-400 group-hover:text-zinc-200 uppercase font-mono">JORNADA</span>
               </div>
-              <div>
-                <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center space-x-2">
-                  <span className="group-hover:text-cyan-400 transition-colors font-mono">FOCUS.OS_v1.2</span>
-                  <span className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-ping shrink-0" />
-                </h1>
-              </div>
+
+              {/* Session Pill */}
+              {session ? (
+                <div className="flex items-center space-x-2 bg-emerald-950/20 border border-emerald-950/40 rounded-xl px-3 py-1 text-[10px] text-emerald-400 font-mono font-bold max-w-[150px] sm:max-w-xs shrink-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
+                  <span className="truncate hidden md:inline max-w-[120px]">{session.email}</span>
+                  {syncStatus === 'syncing' ? (
+                    <span className="text-[9px] text-zinc-500 italic animate-pulse shrink-0">Sincronizando...</span>
+                  ) : syncStatus === 'synced' ? (
+                    <span className="text-[9px] text-emerald-500 font-bold tracking-wider shrink-0">// SALVO</span>
+                  ) : syncStatus === 'error' ? (
+                    <span className="text-[9px] text-rose-500 font-bold shrink-0">// ERRO</span>
+                  ) : null}
+                  <button
+                    onClick={() => {
+                      playTypeSound();
+                      localStorage.removeItem('focus_quest_user_session');
+                      setSession(null);
+                      window.location.reload();
+                    }}
+                    className="ml-2 text-zinc-500 hover:text-white font-black text-[9px] uppercase border-l border-emerald-950/50 pl-2 cursor-pointer shrink-0"
+                  >
+                    Sair
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 bg-zinc-900 border border-zinc-850 rounded-xl px-2.5 py-1 text-[9px] font-mono font-bold text-zinc-400">
+                  <span className="hidden md:inline">Offline Local</span>
+                  <button
+                    onClick={() => {
+                      playTypeSound();
+                      localStorage.removeItem('focus_quest_offline_mode');
+                      setIsOfflineMode(false);
+                    }}
+                    className="text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                  >
+                    Nuvem
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Quick Action buttons */}
             <div className="flex items-center space-x-2 shrink-0">
-              {/* Sound Toggle (Large mobile touch target) */}
+              {/* Sound Toggle */}
               <button
                 onClick={handleToggleSound}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-cyan-950/20 hover:border-cyan-500/30 text-zinc-400 hover:text-cyan-400 w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-100 w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
                 title={soundEnabled ? "Desativar efeitos sonoros" : "Ativar efeitos sonoros"}
               >
-                {soundEnabled ? <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" /> : <VolumeX className="w-4 h-4" />}
-                <span className="hidden sm:inline ml-1.5">{soundEnabled ? "Sons" : "Mudo"}</span>
+                {soundEnabled ? <Volume2 className="w-4 h-4 text-zinc-300" /> : <VolumeX className="w-4 h-4 text-zinc-500" />}
+                <span className="hidden sm:inline ml-1.5 font-medium">{soundEnabled ? "Sons" : "Mudo"}</span>
               </button>
 
-              {/* Help/Info Button (Large mobile touch target) */}
+              {/* Focus Tip of the Day Button */}
               <button
-                onClick={() => setShowHelpModal(true)}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-pink-950/20 hover:border-pink-500/30 text-zinc-400 hover:text-pink-400 w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+                id="show-tip-modal-btn"
+                onClick={handleOpenTipModal}
+                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-100 w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+                title="Dica de Foco do Dia"
+              >
+                <Lightbulb className="w-4 h-4 text-zinc-300" />
+                <span className="hidden sm:inline ml-1.5 font-medium">Dica</span>
+              </button>
+
+              {/* Zen Mode Button */}
+              <button
+                id="toggle-zen-mode-btn"
+                onClick={() => { setZenMode(!zenMode); playTypeSound(); }}
+                className={`flex items-center justify-center border w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm ${
+                  zenMode 
+                    ? 'bg-zinc-850 border-zinc-700 text-white' 
+                    : 'border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200'
+                }`}
+                title={zenMode ? "Desativar Modo Zen" : "Ativar Modo Zen"}
+              >
+                <Leaf className={`w-4 h-4 ${zenMode ? 'text-zinc-100' : 'text-zinc-400'}`} />
+                <span className="hidden sm:inline ml-1.5 font-medium">{zenMode ? "Modo Zen" : "Modo Zen"}</span>
+              </button>
+
+              {/* Help/Info Button */}
+              <button
+                onClick={() => { setShowHelpModal(true); playTypeSound(); }}
+                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-100 w-11 h-11 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
                 title="Como funciona"
               >
-                <HelpCircle className="w-4 h-4 text-zinc-400 hover:text-pink-400 transition-colors" />
-                <span className="hidden sm:inline ml-1.5">Como funciona</span>
+                <HelpCircle className="w-4 h-4 text-zinc-400 hover:text-zinc-200 transition-colors" />
+                <span className="hidden sm:inline ml-1.5 font-medium font-sans">Ajuda</span>
               </button>
             </div>
           </div>
 
           {/* Symmetrical mobile-first HUD stats bar */}
-          <div className="mt-3.5 bg-zinc-950/50 border border-zinc-900 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in shadow-inner relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
-            {/* Level & Streak metrics container */}
-            <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
-              <div className="flex items-center gap-3">
-                {/* Level Badge with subtle background color */}
-                <div className="flex items-center space-x-2.5 bg-cyan-950/30 border border-cyan-500/20 rounded-xl px-3 py-2 hover:border-cyan-500/50 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.05)]">
-                  <Award className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <div className="leading-none">
-                    <span className="block text-[8px] text-cyan-300 uppercase tracking-widest font-bold font-mono">Nível</span>
-                    <span className="text-xs font-black text-white font-mono">{stats.level} <span className="text-[9px] text-zinc-600">/ 150</span></span>
+          {!zenMode && (
+            <div className="mt-3.5 bg-zinc-950/50 border border-zinc-900 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in shadow-inner relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
+              {/* Level & Streak metrics container */}
+              <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
+                <div className="flex items-center gap-3">
+                  {/* Level Badge with subtle background color */}
+                  <div className="flex items-center space-x-2.5 bg-cyan-950/30 border border-cyan-500/20 rounded-xl px-3 py-2 hover:border-cyan-500/50 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.05)]">
+                    <Award className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <div className="leading-none">
+                      <span className="block text-[8px] text-cyan-300 uppercase tracking-widest font-bold font-mono">Nível</span>
+                      <span className="text-xs font-black text-white font-mono">{stats.level} <span className="text-[9px] text-zinc-600">/ 15</span></span>
+                    </div>
+                  </div>
+
+                  {/* Day Streak Badge with heartbeat animation */}
+                  <div className="flex items-center space-x-2.5 bg-pink-950/30 border border-pink-500/20 rounded-xl px-3 py-2 hover:border-pink-500/50 transition-colors shadow-[0_0_10px_rgba(236,72,153,0.05)]">
+                    <Flame className="w-4 h-4 text-pink-400 shrink-0 animate-pulse" />
+                    <div className="leading-none">
+                      <span className="block text-[8px] text-pink-300 uppercase tracking-widest font-bold font-mono">Sequência</span>
+                      <span className="text-xs font-black text-white font-mono">{stats.streak} {stats.streak === 1 ? 'DIA' : 'DIAS'}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Day Streak Badge with heartbeat animation */}
-                <div className="flex items-center space-x-2.5 bg-pink-950/30 border border-pink-500/20 rounded-xl px-3 py-2 hover:border-pink-500/50 transition-colors shadow-[0_0_10px_rgba(236,72,153,0.05)]">
-                  <Flame className="w-4 h-4 text-pink-400 shrink-0 animate-pulse" />
-                  <div className="leading-none">
-                    <span className="block text-[8px] text-pink-300 uppercase tracking-widest font-bold font-mono">Sequência</span>
-                    <span className="text-xs font-black text-white font-mono">{stats.streak} {stats.streak === 1 ? 'DIA' : 'DIAS'}</span>
-                  </div>
+                {/* Symmetrical Share Button inside HUD container */}
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="flex items-center justify-center space-x-1.5 bg-pink-600/10 hover:bg-pink-600/20 border border-pink-500/20 text-pink-400 font-extrabold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ml-auto md:ml-3 shrink-0 h-10 min-w-[40px] cursor-pointer"
+                  title="Compartilhar Progresso"
+                >
+                  <Share2 className="w-4 h-4 text-pink-400" />
+                  <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-extrabold">Compartilhar</span>
+                </button>
+              </div>
+
+              {/* XP progress metrics block */}
+              <div className="flex-1 max-w-xl w-full flex flex-col justify-center">
+                <div className="flex justify-between items-baseline text-[10px] font-bold text-zinc-400 mb-1.5 font-mono">
+                  <span className="uppercase tracking-wider">Progresso de Experiência</span>
+                  <span className="text-cyan-400">{stats.xp} / {xpNeeded} XP</span>
+                </div>
+                <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden relative border border-zinc-900">
+                  <div
+                    className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                    style={{ width: `${xpProgressPercent}%` }}
+                  />
                 </div>
               </div>
-
-              {/* Symmetrical Share Button inside HUD container */}
-              <button
-                onClick={() => setShowShareModal(true)}
-                className="flex items-center justify-center space-x-1.5 bg-pink-600/10 hover:bg-pink-600/20 border border-pink-500/20 text-pink-400 font-extrabold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ml-auto md:ml-3 shrink-0 h-10 min-w-[40px] cursor-pointer"
-                title="Compartilhar Progresso"
-              >
-                <Share2 className="w-4 h-4 text-pink-400" />
-                <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-extrabold">Compartilhar</span>
-              </button>
             </div>
-
-            {/* XP progress metrics block */}
-            <div className="flex-1 max-w-xl w-full flex flex-col justify-center">
-              <div className="flex justify-between items-baseline text-[10px] font-bold text-zinc-400 mb-1.5 font-mono">
-                <span className="uppercase tracking-wider">Progresso de Experiência</span>
-                <span className="text-cyan-400">{stats.xp} / {xpNeeded} XP</span>
-              </div>
-              <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden relative border border-zinc-900">
-                <div
-                  className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(6,182,212,0.5)]"
-                  style={{ width: `${xpProgressPercent}%` }}
-                />
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Premium Navigation Tabs on Desktop/Tablet */}
-          <div className="hidden md:flex items-center space-x-2 mt-4 pt-3.5 border-t border-zinc-900/60">
-            <button
-              onClick={() => setActiveMainTab('tasks')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-                activeMainTab === 'tasks'
-                  ? 'bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                  : 'text-zinc-500 hover:text-cyan-300/85 border border-transparent'
-              }`}
-            >
-              <CheckSquare className="w-3.5 h-3.5" />
-              <span>Missões & Foco</span>
-            </button>
+          {!zenMode && (
+            <div className="hidden md:flex items-center space-x-2 mt-4 pt-3.5 border-t border-zinc-900/60">
+              <button
+                onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                  activeMainTab === 'tasks'
+                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                }`}
+              >
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span>Missões & Foco</span>
+              </button>
 
-            <button
-              onClick={() => setActiveMainTab('stats')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-                activeMainTab === 'stats'
-                  ? 'bg-pink-950/40 text-pink-400 border border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.15)]'
-                  : 'text-zinc-500 hover:text-pink-300/85 border border-transparent'
-              }`}
-            >
-              <BarChart2 className="w-3.5 h-3.5" />
-              <span>Evolução & Gráficos</span>
-            </button>
+              <button
+                onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                  activeMainTab === 'stats'
+                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                }`}
+              >
+                <BarChart2 className="w-3.5 h-3.5" />
+                <span>Evolução & Gráficos</span>
+              </button>
 
-            <button
-              onClick={() => setActiveMainTab('coach')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-                activeMainTab === 'coach'
-                  ? 'bg-fuchsia-950/40 text-fuchsia-400 border border-fuchsia-500/30 shadow-[0_0_15px_rgba(217,70,239,0.15)]'
-                  : 'text-zinc-500 hover:text-fuchsia-300/85 border border-transparent'
-              }`}
-            >
-              <Brain className="w-3.5 h-3.5" />
-              <span>Treinador Mental IA</span>
-            </button>
+              <button
+                onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                  activeMainTab === 'coach'
+                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                }`}
+              >
+                <Brain className="w-3.5 h-3.5" />
+                <span>Treinador Mental IA</span>
+              </button>
 
-            <button
-              onClick={() => setActiveMainTab('achievements')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-                activeMainTab === 'achievements'
-                  ? 'bg-amber-950/40 text-amber-400 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                  : 'text-zinc-500 hover:text-amber-300/85 border border-transparent'
-              }`}
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span>Conquistas ({achievements.filter(a => a.unlocked).length})</span>
-            </button>
+              <button
+                onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                  activeMainTab === 'achievements'
+                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                <span>Conquistas ({achievements.filter(a => a.unlocked).length})</span>
+              </button>
 
-            <button
-              onClick={() => setActiveMainTab('journal')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-                activeMainTab === 'journal'
-                  ? 'bg-pink-950/40 text-pink-400 border border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.15)]'
-                  : 'text-zinc-500 hover:text-pink-300/85 border border-transparent'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Diário</span>
-            </button>
-          </div>
+              <button
+                onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                  activeMainTab === 'journal'
+                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Diário</span>
+              </button>
+            </div>
+          )}
 
         </div>
       </header>
 
       {/* Daily Focus Tip Message */}
-      <DailyTip />
+      {!zenMode && <DailyTip />}
 
       {/* Mobile Sticky Bottom HUD Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 border-t border-zinc-900 backdrop-blur-md px-2 py-2 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.8)] pb-safe">
-        <button
-          onClick={() => setActiveMainTab('tasks')}
-          className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-            activeMainTab === 'tasks' ? 'text-cyan-400 bg-cyan-950/40 font-bold border border-cyan-500/20' : 'text-zinc-500 font-medium'
-          }`}
-        >
-          <CheckSquare className="w-5 h-5 mb-1" />
-          <span className="text-[9px] uppercase tracking-wider">Missões</span>
-        </button>
+      {!zenMode && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 border-t border-zinc-900 backdrop-blur-md px-2 py-2 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.8)] pb-safe">
+          <button
+            onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
+            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+              activeMainTab === 'tasks' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+            }`}
+          >
+            <CheckSquare className="w-5 h-5 mb-1" />
+            <span className="text-[9px] uppercase tracking-wider">Missões</span>
+          </button>
 
-        <button
-          onClick={() => setActiveMainTab('stats')}
-          className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-            activeMainTab === 'stats' ? 'text-pink-400 bg-pink-950/40 font-bold border border-pink-500/20' : 'text-zinc-500 font-medium'
-          }`}
-        >
-          <BarChart2 className="w-5 h-5 mb-1" />
-          <span className="text-[9px] uppercase tracking-wider font-bold font-mono">Gráficos</span>
-        </button>
+          <button
+            onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
+            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+              activeMainTab === 'stats' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+            }`}
+          >
+            <BarChart2 className="w-5 h-5 mb-1" />
+            <span className="text-[9px] uppercase tracking-wider">Gráficos</span>
+          </button>
 
-        <button
-          onClick={() => setActiveMainTab('coach')}
-          className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-            activeMainTab === 'coach' ? 'text-fuchsia-400 bg-fuchsia-950/40 font-bold border border-fuchsia-500/20' : 'text-zinc-500 font-medium'
-          }`}
-        >
-          <Brain className="w-5 h-5 mb-1" />
-          <span className="text-[9px] uppercase tracking-wider">Mente IA</span>
-        </button>
+          <button
+            onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
+            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+              activeMainTab === 'coach' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+            }`}
+          >
+            <Brain className="w-5 h-5 mb-1" />
+            <span className="text-[9px] uppercase tracking-wider">Mente IA</span>
+          </button>
 
-        <button
-          onClick={() => setActiveMainTab('achievements')}
-          className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-            activeMainTab === 'achievements' ? 'text-amber-400 bg-amber-950/40 font-bold border border-amber-500/20' : 'text-zinc-500 font-medium'
-          }`}
-        >
-          <Trophy className="w-5 h-5 mb-1" />
-          <span className="text-[9px] uppercase tracking-wider">Troféus</span>
-        </button>
+          <button
+            onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
+            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+              activeMainTab === 'achievements' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+            }`}
+          >
+            <Trophy className="w-5 h-5 mb-1" />
+            <span className="text-[9px] uppercase tracking-wider">Troféus</span>
+          </button>
 
-        <button
-          onClick={() => setActiveMainTab('journal')}
-          className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-            activeMainTab === 'journal' ? 'text-pink-400 bg-pink-950/40 font-bold border border-pink-500/20' : 'text-zinc-500 font-medium'
-          }`}
-        >
-          <BookOpen className="w-5 h-5 mb-1" />
-          <span className="text-[9px] uppercase tracking-wider">Diário</span>
-        </button>
-      </div>
+          <button
+            onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
+            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+              activeMainTab === 'journal' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+            }`}
+          >
+            <BookOpen className="w-5 h-5 mb-1" />
+            <span className="text-[9px] uppercase tracking-wider">Diário</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Content Workspace Grid */}
-      <main className="w-full px-4 sm:px-6 md:px-8 lg:px-10 mt-6 pb-24 md:pb-6">
-        
-        {activeMainTab === 'tasks' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
-            {/* LEFT COLUMN: Gamified Tasks Panel (occupies 7 of 12 columns in desktop) */}
-            <div className="lg:col-span-7 space-y-6">
-              {/* Direct Task List Workspace */}
-              <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
-                <TaskList
-                  tasks={tasks}
-                  addTask={addTask}
-                  deleteTask={deleteTask}
-                  toggleTaskCompletion={toggleTaskCompletion}
-                  selectedTaskId={selectedTask?.id || null}
-                  onSelectTask={handleSelectTask}
+      <main className="w-full px-4 sm:px-6 md:px-8 lg:px-10 mt-6 pb-24 md:pb-6 overflow-x-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeMainTab}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="w-full animate-fade-in"
+          >
+            {activeMainTab === 'tasks' && (
+              <div className={zenMode ? 'max-w-xl mx-auto w-full' : 'grid grid-cols-1 lg:grid-cols-12 gap-6'}>
+                {/* LEFT COLUMN: Gamified Tasks Panel (occupies 7 of 12 columns in desktop) */}
+                {!zenMode && (
+                  <div className="lg:col-span-7 space-y-6">
+                    {/* Direct Task List Workspace */}
+                    <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+                      <TaskList
+                        tasks={tasks}
+                        addTask={addTask}
+                        deleteTask={deleteTask}
+                        toggleTaskCompletion={toggleTaskCompletion}
+                        selectedTaskId={selectedTask?.id || null}
+                        onSelectTask={handleSelectTask}
+                      />
+                    </div>
+
+                    {/* Long-Term Goals Panel */}
+                    <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+                      <LongTermGoals
+                        goals={longTermGoals}
+                        onAddGoal={addLongTermGoal}
+                        onDeleteGoal={deleteLongTermGoal}
+                        onToggleSubtask={toggleSubTaskCompletion}
+                        onAddSubtaskToGoal={addSubTaskToGoal}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* RIGHT COLUMN: Interactive Focus Companion (occupies 5 of 12 columns) */}
+                <div className={zenMode ? 'w-full' : 'lg:col-span-5'} space-y-6>
+                  {zenMode && (
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-center space-y-1.5 animate-pulse">
+                      <div className="flex items-center justify-center space-x-2 text-zinc-400">
+                        <Leaf className="w-4 h-4 text-zinc-300 animate-spin" style={{ animationDuration: '8s' }} />
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest font-mono">MODO_ZEN_ATIVO</span>
+                      </div>
+                      <p className="text-xs text-zinc-400">Todas as distrações, abas e barras laterais foram ocultadas para manter seu foco puro.</p>
+                    </div>
+                  )}
+                  {/* Companion Timer Panel */}
+                  <FocusTimer
+                    onFocusComplete={handleFocusComplete}
+                    currentTaskTitle={activeTaskTitle}
+                    soundEnabled={soundEnabled}
+                    onToggleSound={handleToggleSound}
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeMainTab === 'stats' && (
+              <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+                <StatsDashboard stats={stats} tasks={tasks} />
+              </div>
+            )}
+
+            {activeMainTab === 'coach' && (
+              <div className="w-full max-w-4xl mx-auto">
+                <AICoach
+                  level={stats.level}
+                  streak={stats.streak}
+                  totalTasksCompleted={stats.totalTasksCompleted}
+                  currentTaskTitle={activeTaskTitle}
                 />
               </div>
+            )}
 
-              {/* Long-Term Goals Panel */}
-              <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
-                <LongTermGoals
-                  goals={longTermGoals}
-                  onAddGoal={addLongTermGoal}
-                  onDeleteGoal={deleteLongTermGoal}
-                  onToggleSubtask={toggleSubTaskCompletion}
-                  onAddSubtaskToGoal={addSubTaskToGoal}
+            {activeMainTab === 'achievements' && (
+              <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+                <AchievementsList achievements={achievements} />
+              </div>
+            )}
+
+            {activeMainTab === 'journal' && (
+              <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+                <JournalTab
+                  entries={journalEntries}
+                  onAddEntry={addJournalEntry}
+                  onDeleteEntry={deleteJournalEntry}
+                  currentFocusTaskTitle={activeTaskTitle}
                 />
               </div>
-            </div>
-
-            {/* RIGHT COLUMN: Interactive Focus Companion (occupies 5 of 12 columns) */}
-            <div className="lg:col-span-5 space-y-6">
-              {/* Companion Timer Panel */}
-              <FocusTimer
-                onFocusComplete={handleFocusComplete}
-                currentTaskTitle={activeTaskTitle}
-                soundEnabled={soundEnabled}
-                onToggleSound={handleToggleSound}
-              />
-            </div>
-          </div>
-        )}
-
-        {activeMainTab === 'stats' && (
-          <div className="bg-zinc-950 border border-pink-500/20 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(236,72,153,0.05)] animate-fade-in">
-            <StatsDashboard stats={stats} tasks={tasks} />
-          </div>
-        )}
-
-        {activeMainTab === 'coach' && (
-          <div className="w-full max-w-4xl mx-auto animate-fade-in">
-            <AICoach
-              level={stats.level}
-              streak={stats.streak}
-              totalTasksCompleted={stats.totalTasksCompleted}
-              currentTaskTitle={activeTaskTitle}
-            />
-          </div>
-        )}
-
-        {activeMainTab === 'achievements' && (
-          <div className="bg-zinc-950 border border-amber-500/20 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(245,158,11,0.05)] animate-fade-in">
-            <AchievementsList achievements={achievements} />
-          </div>
-        )}
-
-        {activeMainTab === 'journal' && (
-          <div className="bg-zinc-950 border border-pink-500/20 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(236,72,153,0.05)] animate-fade-in">
-            <JournalTab
-              entries={journalEntries}
-              onAddEntry={addJournalEntry}
-              onDeleteEntry={deleteJournalEntry}
-              currentFocusTaskTitle={activeTaskTitle}
-            />
-          </div>
-        )}
-
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Symmetrical footer */}
       <footer className="w-full px-4 sm:px-6 md:px-8 lg:px-10 mt-12 pb-24 md:pb-12 text-center flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500 border-t border-zinc-900/60 pt-4">
-        <span className="font-mono">FOCUS.OS v1.2 • Premium Cyberpunk HUD Interface</span>
+        <span className="font-mono">Todos os direitos reservados</span>
         <button
           id="reset-all-data-btn"
           onClick={() => setShowResetConfirm(true)}
@@ -574,7 +805,7 @@ export default function App() {
 
               <div className="space-y-1">
                 <h5 className="font-bold text-white uppercase tracking-wider text-[10px] text-indigo-400">👑 Progressão de Nível:</h5>
-                <p>Navegue por até <strong>150 níveis</strong> de prestígio. A XP necessária aumenta gradativamente de forma suave para manter o desafio recompensador.</p>
+                <p>Navegue por até <strong>15 níveis</strong> de prestígio. A XP necessária aumenta de forma desafiadora para valorizar cada subida de nível.</p>
               </div>
 
               <div className="space-y-1">
@@ -588,6 +819,54 @@ export default function App() {
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 sm:py-3 rounded-xl text-xs mt-6 transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)] shrink-0 min-h-[44px] active:scale-95"
             >
               Entendido, vamos focar!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Daily Focus Tip Modal Overlay */}
+      {showDailyTipModal && (
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full shadow-[0_0_30px_rgba(245,158,11,0.15)] relative flex flex-col overflow-hidden animate-scale-up">
+            <button
+              onClick={() => setShowDailyTipModal(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white p-1 transition-colors z-10 cursor-pointer"
+              title="Fechar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center space-x-2 border-b border-zinc-800/50 pb-3 mb-4 shrink-0">
+              <div className="bg-amber-950/80 p-1.5 rounded-lg text-amber-400">
+                <Lightbulb className="w-5 h-5 animate-pulse text-amber-400" />
+              </div>
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider font-mono">Dica de Foco do Dia</h4>
+            </div>
+
+            <div className="space-y-4 text-center py-4">
+              <span className="text-[9px] font-extrabold text-amber-400 uppercase tracking-widest font-mono bg-amber-950/50 px-2 py-1 rounded-md border border-amber-500/20">
+                // SYSTEM_INJECT_TIP
+              </span>
+              <p className="text-sm text-zinc-100 leading-relaxed font-semibold italic">
+                "{currentTip}"
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                const randomIndex = Math.floor(Math.random() * FOCUS_TIPS.length);
+                setCurrentTip(FOCUS_TIPS[randomIndex]);
+              }}
+              className="w-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold py-2 sm:py-2.5 rounded-xl text-xs mt-4 transition-all hover:border-amber-500/60 active:scale-95"
+            >
+              Próxima Dica 💡
+            </button>
+
+            <button
+              onClick={() => setShowDailyTipModal(false)}
+              className="w-full bg-zinc-900 hover:bg-zinc-850 text-zinc-300 font-bold py-2 sm:py-2.5 rounded-xl text-xs mt-2 transition-all active:scale-95"
+            >
+              Fechar
             </button>
           </div>
         </div>
@@ -746,6 +1025,80 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cloud Conflict Resolver Modal */}
+      {cloudConflict && (
+        <div className="fixed inset-0 bg-[#030305]/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-emerald-500/30 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(16,185,129,0.15)] relative overflow-hidden flex flex-col text-center">
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-indigo-500 to-emerald-500" />
+            
+            <div className="w-16 h-16 bg-emerald-950/40 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-400">
+              <Database className="w-8 h-8 animate-pulse" />
+            </div>
+
+            <h3 className="text-sm font-black text-white uppercase tracking-tight">Sincronização de Progresso</h3>
+            <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+              Encontramos dados salvos na nuvem do Supabase! Escolha o que fazer com seu progresso:
+            </p>
+
+            <div className="mt-6 space-y-3">
+              {/* Option A: Restore Cloud */}
+              <button
+                onClick={() => {
+                  playTypeSound();
+                  // Overwrite local progress with cloud progress
+                  localStorage.setItem('focus_quest_tasks', JSON.stringify(cloudConflict.tasks || []));
+                  localStorage.setItem('focus_quest_stats', JSON.stringify(cloudConflict.stats || {}));
+                  localStorage.setItem('focus_quest_achievements', JSON.stringify(cloudConflict.achievements || []));
+                  setCloudConflict(null);
+                  window.location.reload();
+                }}
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 shadow-[0_4px_15px_rgba(16,185,129,0.25)] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ArrowDownCircle className="w-4 h-4" />
+                <span>Baixar Progresso do Supabase</span>
+              </button>
+
+              {/* Option B: Upload Local */}
+              <button
+                onClick={async () => {
+                  playTypeSound();
+                  if (session) {
+                    try {
+                      setSyncStatus('syncing');
+                      await fetch(`/api/supabase/sync/${session.email}`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${session.token}`
+                        },
+                        body: JSON.stringify({
+                          tasks,
+                          stats,
+                          achievements
+                        })
+                      });
+                      setSyncStatus('synced');
+                    } catch (e) {
+                      console.error("Failed to upload local progress:", e);
+                      setSyncStatus('error');
+                    }
+                  }
+                  setCloudConflict(null);
+                }}
+                className="w-full bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-300 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ArrowUpCircle className="w-4 h-4" />
+                <span>Sobrescrever Nuvem com meu Progresso Local</span>
+              </button>
+            </div>
+
+            <p className="text-[10px] text-zinc-500 mt-4 font-mono">
+              Última sincronização na nuvem: {new Date(cloudConflict.updated_at).toLocaleString('pt-BR')}
+            </p>
           </div>
         </div>
       )}

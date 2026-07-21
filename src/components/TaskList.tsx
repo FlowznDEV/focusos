@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, Trash, Folder, AlertCircle, Play, CheckCircle2, Circle, Sparkles, Filter, Check, Search } from 'lucide-react';
-import { Task, Difficulty, TaskCategory } from '../types';
+import { Plus, Trash, Folder, AlertCircle, Play, CheckCircle2, Circle, Sparkles, Filter, Check, Search, X } from 'lucide-react';
+import { Task, Difficulty, TaskCategory, Priority } from '../types';
+import { playTypeSound } from '../lib/sound';
 
 interface TaskListProps {
   tasks: Task[];
-  addTask: (title: string, description: string, difficulty: Difficulty, category: TaskCategory, estimatedFocusPomodoros: number) => void;
+  addTask: (title: string, description: string, difficulty: Difficulty, category: TaskCategory, estimatedFocusPomodoros: number, priority?: Priority) => void;
   deleteTask: (id: string) => void;
   toggleTaskCompletion: (id: string) => void;
   selectedTaskId: string | null;
@@ -25,6 +26,12 @@ const DIFFICULTY_MAP: Record<Difficulty, { label: string; xp: number; color: str
   hard: { label: 'Difícil', xp: 150, color: 'text-pink-400', bg: 'bg-pink-950/60 border border-pink-900/40' }
 };
 
+const PRIORITY_MAP: Record<Priority, { label: string; color: string; bg: string }> = {
+  low: { label: 'Baixa', color: 'text-zinc-400', bg: 'bg-zinc-900 border border-zinc-800' },
+  medium: { label: 'Média', color: 'text-amber-400', bg: 'bg-amber-950/60 border border-amber-900/40' },
+  high: { label: 'Alta', color: 'text-rose-400', bg: 'bg-rose-950/60 border border-rose-900/40' }
+};
+
 export default function TaskList({
   tasks,
   addTask,
@@ -35,6 +42,7 @@ export default function TaskList({
 }: TaskListProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Form states
@@ -42,19 +50,21 @@ export default function TaskList({
   const [description, setDescription] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [category, setCategory] = useState<TaskCategory>('study');
+  const [priority, setPriority] = useState<Priority>('medium');
   const [pomodoros, setPomodoros] = useState(1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    addTask(title, description, difficulty, category, pomodoros);
+    addTask(title, description, difficulty, category, pomodoros, priority);
     
     // Reset Form
     setTitle('');
     setDescription('');
     setDifficulty('easy');
     setCategory('study');
+    setPriority('medium');
     setPomodoros(1);
     setIsAdding(false);
   };
@@ -63,8 +73,11 @@ export default function TaskList({
     const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
 
-    if (filter === 'pending') return !t.completed;
-    if (filter === 'completed') return t.completed;
+    if (filter === 'pending' && t.completed) return false;
+    if (filter === 'completed' && !t.completed) return false;
+
+    if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
+
     return true;
   });
 
@@ -140,7 +153,7 @@ export default function TaskList({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1.5">Dificuldade</span>
                   <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-lg">
@@ -153,6 +166,23 @@ export default function TaskList({
                         className={`flex-1 py-1 px-1 text-center text-[10px] font-bold rounded-md uppercase transition-all ${difficulty === diff ? 'bg-zinc-800 text-white shadow-xs border border-zinc-700/50' : 'text-zinc-500 hover:text-zinc-300'}`}
                       >
                         {diff === 'easy' ? 'Fácil' : diff === 'medium' ? 'Médio' : 'Difícil'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1.5">Prioridade</span>
+                  <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-lg">
+                    {(['low', 'medium', 'high'] as Priority[]).map((prio) => (
+                      <button
+                        id={`btn-priority-${prio}`}
+                        key={prio}
+                        type="button"
+                        onClick={() => setPriority(prio)}
+                        className={`flex-1 py-1 px-1 text-center text-[10px] font-bold rounded-md uppercase transition-all ${priority === prio ? 'bg-zinc-800 text-white shadow-xs border border-zinc-700/50' : 'text-zinc-500 hover:text-zinc-300'}`}
+                      >
+                        {prio === 'low' ? 'Baixa' : prio === 'medium' ? 'Média' : 'Alta'}
                       </button>
                     ))}
                   </div>
@@ -198,45 +228,101 @@ export default function TaskList({
       )}
 
       {/* Filters & Search bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex items-center space-x-1 bg-zinc-900/80 border border-zinc-800 p-1 rounded-xl w-fit shrink-0">
-          <button
-            id="filter-all-btn"
-            type="button"
-            onClick={() => setFilter('all')}
-            className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'all' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Todas
-          </button>
-          <button
-            id="filter-pending-btn"
-            type="button"
-            onClick={() => setFilter('pending')}
-            className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'pending' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Pendentes
-          </button>
-          <button
-            id="filter-completed-btn"
-            type="button"
-            onClick={() => setFilter('completed')}
-            className={`py-1 px-3.5 text-xs font-semibold rounded-lg transition-all ${filter === 'completed' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Concluídas
-          </button>
+      <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status filter chips */}
+          <div className="flex items-center space-x-1 bg-zinc-900/80 border border-zinc-800 p-1 rounded-xl w-fit shrink-0">
+            <button
+              id="filter-all-btn"
+              type="button"
+              onClick={() => setFilter('all')}
+              className={`py-1 px-3 text-[11px] font-semibold rounded-lg transition-all ${filter === 'all' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Todas
+            </button>
+            <button
+              id="filter-pending-btn"
+              type="button"
+              onClick={() => setFilter('pending')}
+              className={`py-1 px-3 text-[11px] font-semibold rounded-lg transition-all ${filter === 'pending' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Pendentes
+            </button>
+            <button
+              id="filter-completed-btn"
+              type="button"
+              onClick={() => setFilter('completed')}
+              className={`py-1 px-3 text-[11px] font-semibold rounded-lg transition-all ${filter === 'completed' ? 'bg-zinc-800 text-white border border-zinc-700/50 shadow-xs' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Concluídas
+            </button>
+          </div>
+
+          {/* Priority filter chips */}
+          <div className="flex items-center space-x-1 bg-zinc-900/80 border border-zinc-800 p-1 rounded-xl w-fit shrink-0">
+            <span className="text-[10px] text-zinc-500 font-bold px-2 uppercase tracking-wider font-mono">Prioridade:</span>
+            <button
+              id="prio-filter-all-btn"
+              type="button"
+              onClick={() => setPriorityFilter('all')}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all ${priorityFilter === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Tudo
+            </button>
+            <button
+              id="prio-filter-low-btn"
+              type="button"
+              onClick={() => setPriorityFilter('low')}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all ${priorityFilter === 'low' ? 'bg-zinc-800/40 text-zinc-300 border border-zinc-750' : 'text-zinc-500 hover:text-zinc-400'}`}
+            >
+              Baixa
+            </button>
+            <button
+              id="prio-filter-medium-btn"
+              type="button"
+              onClick={() => setPriorityFilter('medium')}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all ${priorityFilter === 'medium' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/40' : 'text-zinc-500 hover:text-amber-500/70'}`}
+            >
+              Média
+            </button>
+            <button
+              id="prio-filter-high-btn"
+              type="button"
+              onClick={() => setPriorityFilter('high')}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all ${priorityFilter === 'high' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/40' : 'text-zinc-500 hover:text-rose-500/70'}`}
+            >
+              Alta
+            </button>
+          </div>
         </div>
 
-        {/* Search input */}
-        <div className="relative w-full sm:w-64">
+        {/* Search input with clear button & sound feedback */}
+        <div className="relative w-full lg:w-64">
           <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             id="task-search-input"
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              playTypeSound();
+            }}
             placeholder="Pesquisar tarefas..."
-            className="w-full text-xs border border-zinc-800 hover:border-zinc-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-xl pl-9 pr-3 py-1.5 bg-zinc-900/60 text-white placeholder-zinc-600 transition-all"
+            className="w-full text-xs border border-zinc-800 hover:border-zinc-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-xl pl-9 pr-8 py-1.5 bg-zinc-900/60 text-white placeholder-zinc-600 transition-all"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                playTypeSound();
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors p-1 cursor-pointer"
+              title="Limpar pesquisa"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -312,6 +398,15 @@ export default function TaskList({
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${diffInfo.bg} ${diffInfo.color}`}>
                         {diffInfo.label}
                       </span>
+                      {(() => {
+                        const prio = task.priority || 'medium';
+                        const prioInfo = PRIORITY_MAP[prio];
+                        return (
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${prioInfo.bg} ${prioInfo.color}`}>
+                            Prioridade: {prioInfo.label}
+                          </span>
+                        );
+                      })()}
                       {task.estimatedFocusPomodoros > 0 && (
                         <span className="text-[9px] text-zinc-500 font-medium">
                           ⏱️ Estimativa: {task.estimatedFocusPomodoros} focus

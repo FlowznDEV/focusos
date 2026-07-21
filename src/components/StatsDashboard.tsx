@@ -2,6 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Award, Zap, Clock, CheckSquare, Sparkles, TrendingUp } from 'lucide-react';
 import { UserStats, Task } from '../types';
 import { getXPForNextLevel } from '../useGamifiedState';
+import RpgProgressionMap from './RpgProgressionMap';
 
 interface StatsDashboardProps {
   stats: UserStats;
@@ -54,9 +55,23 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
   // Take last 15 actions to avoid cluttered chart
   const recentXPTrend = xpTrendData.slice(-15);
 
-  // 3. Process 7-Day Performance Data (Completed Tasks & XP)
+  // 3. Process 7-Day Performance Data (Completed Tasks, XP, & Focus Minutes)
+  const extractMinutes = (reason: string): number => {
+    const match = reason.match(/Completou (\d+) minutos de sessão de Foco/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+    return 0;
+  };
+
   const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  const last7DaysData = [];
+  const last7DaysData: Array<{
+    dateStr: string;
+    label: string;
+    completedCount: number;
+    xpEarned: number;
+    focusedMinutes: number;
+  }> = [];
   const today = new Date();
 
   for (let i = 6; i >= 0; i--) {
@@ -76,6 +91,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
       label,
       completedCount: 0,
       xpEarned: 0,
+      focusedMinutes: 0,
     });
   }
 
@@ -95,7 +111,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
     }
   });
 
-  // Aggregate XP earned from stats.xpLogs
+  // Aggregate XP earned and focus minutes from stats.xpLogs
   stats.xpLogs.forEach(log => {
     if (log.timestamp) {
       const dLog = new Date(log.timestamp);
@@ -107,6 +123,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
       const dayObj = last7DaysData.find(item => item.dateStr === logDateStr);
       if (dayObj) {
         dayObj.xpEarned += log.amount;
+        dayObj.focusedMinutes += extractMinutes(log.reason);
       }
     }
   });
@@ -116,6 +133,9 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
 
   return (
     <div id="stats-dashboard-container" className="space-y-6">
+      
+      {/* RPG Progression Map */}
+      <RpgProgressionMap currentLevel={stats.level} />
       
       {/* 4 Key Metrics Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -129,7 +149,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">Nível Atual</span>
             <div className="flex items-baseline justify-center space-x-1">
               <span className="text-2xl font-bold font-mono text-white">{stats.level}</span>
-              <span className="text-xs text-zinc-500">/ 150</span>
+              <span className="text-xs text-zinc-500">/ 15</span>
             </div>
           </div>
           <div className="absolute top-2 right-2 bg-indigo-950/80 border border-indigo-900/50 text-[10px] font-bold text-indigo-400 px-1.5 py-0.5 rounded-sm">
@@ -268,6 +288,38 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px' }} />
                 <Bar yAxisId="left" dataKey="completedCount" fill="#10b981" radius={[4, 4, 0, 0]} name="Tarefas Concluídas" />
                 <Bar yAxisId="right" dataKey="xpEarned" fill="#6366f1" radius={[4, 4, 0, 0]} name="XP Ganho" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Chart 4: Tempo de Foco (Últimos 7 Dias) */}
+        <div id="weekly-focus-minutes-chart-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
+          <div className="mb-4">
+            <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
+              <Clock className="w-4 h-4 text-pink-400" />
+              <span>Tempo de Foco (Últimos 7 Dias)</span>
+            </h4>
+            <p className="text-[11px] text-zinc-500 mt-0.5">Minutos dedicados ao foco profundo dia a dia</p>
+          </div>
+
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={last7DaysData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorFocus" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0.05}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} unit="m" />
+                <Tooltip
+                  contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '12px', fontSize: '11px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', color: '#fff' }}
+                  formatter={(value) => [`${value} minutos`, 'Tempo de Foco']}
+                />
+                <Bar dataKey="focusedMinutes" fill="url(#colorFocus)" stroke="#ec4899" strokeWidth={1} radius={[4, 4, 0, 0]} name="Minutos de Foco" />
               </BarChart>
             </ResponsiveContainer>
           </div>

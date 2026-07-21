@@ -137,3 +137,36 @@ export function playAchievementSound() {
     console.error("Failed to play achievement sound:", e);
   }
 }
+
+/**
+ * Play a subtle, quiet pop/click sound for tactile search typing feedback.
+ */
+export function playTypeSound() {
+  if (!globalSoundEnabled) return;
+
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1300, now);
+    osc.frequency.exponentialRampToValueAtTime(800, now + 0.03);
+
+    // Keep it extremely quiet so it is pleasant and not annoying
+    gainNode.gain.setValueAtTime(0.012, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.04);
+  } catch (e) {
+    // Ignore audio errors during high frequency typing
+  }
+}

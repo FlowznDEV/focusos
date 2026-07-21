@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Task, Achievement, UserStats, XPLog, Difficulty, TaskCategory, JournalEntry, LongTermGoal } from './types';
+import { Task, Achievement, UserStats, XPLog, Difficulty, TaskCategory, JournalEntry, LongTermGoal, Priority } from './types';
 import { playTaskCompleteSound, playLevelUpSound, playAchievementSound } from './lib/sound';
 
 const DEFAULT_ACHIEVEMENTS: Achievement[] = [
@@ -8,16 +8,16 @@ const DEFAULT_ACHIEVEMENTS: Achievement[] = [
   { id: 'productivity_master', title: 'Mestre da Produtividade', description: 'Conclua 25 tarefas no total', xpReward: 500, unlocked: false, icon: 'Award', conditionType: 'tasks', conditionValue: 25 },
   { id: 'first_focus', title: 'Foco Inicial', description: 'Complete sua primeira sessão de foco de no mínimo 5 minutos', xpReward: 150, unlocked: false, icon: 'Clock', conditionType: 'focus', conditionValue: 1 },
   { id: 'focus_iron', title: 'Mente Blindada', description: 'Complete 10 sessões de foco no total', xpReward: 400, unlocked: false, icon: 'Shield', conditionType: 'focus', conditionValue: 10 },
-  { id: 'level_5', title: 'Iniciante Dedicado', description: 'Alcance o nível 5', xpReward: 150, unlocked: false, icon: 'Star', conditionType: 'level', conditionValue: 5 },
-  { id: 'level_25', title: 'Foco Avançado', description: 'Alcance o nível 25', xpReward: 350, unlocked: false, icon: 'Sparkles', conditionType: 'level', conditionValue: 25 },
-  { id: 'level_75', title: 'Guerreiro da Atenção', description: 'Alcance o nível 75', xpReward: 750, unlocked: false, icon: 'Flame', conditionType: 'level', conditionValue: 75 },
-  { id: 'level_150', title: 'Lenda do Foco', description: 'Alcance o nível máximo 150', xpReward: 2000, unlocked: false, icon: 'Crown', conditionType: 'level', conditionValue: 150 },
+  { id: 'level_3', title: 'Iniciante Dedicado', description: 'Alcance o nível 3', xpReward: 150, unlocked: false, icon: 'Star', conditionType: 'level', conditionValue: 3 },
+  { id: 'level_7', title: 'Foco Avançado', description: 'Alcance o nível 7', xpReward: 350, unlocked: false, icon: 'Sparkles', conditionType: 'level', conditionValue: 7 },
+  { id: 'level_11', title: 'Guerreiro da Atenção', description: 'Alcance o nível 11', xpReward: 750, unlocked: false, icon: 'Flame', conditionType: 'level', conditionValue: 11 },
+  { id: 'level_15', title: 'Lenda do Foco', description: 'Alcance o nível máximo 15', xpReward: 2000, unlocked: false, icon: 'Crown', conditionType: 'level', conditionValue: 15 },
   { id: 'streak_3', title: 'Hábito de Ferro', description: 'Alcance uma sequência de 3 dias ativos', xpReward: 250, unlocked: false, icon: 'CalendarDays', conditionType: 'streak', conditionValue: 3 },
 ];
 
 export function getXPForNextLevel(level: number): number {
-  if (level >= 150) return 0;
-  return level * 45 + 80; // Level 1 needs 125xp, Level 10 needs 530xp, Level 149 needs ~6785xp
+  if (level >= 15) return 0;
+  return level * 1200 + 800; // Level 1 needs 2000xp, Level 2 needs 3200xp, Level 14 needs 17600xp
 }
 
 export function useGamifiedState() {
@@ -160,7 +160,7 @@ export function useGamifiedState() {
       let currentLevel = prev.level;
       let levelUpOccurred = false;
 
-      while (currentLevel < 150 && currentXP >= getXPForNextLevel(currentLevel)) {
+      while (currentLevel < 15 && currentXP >= getXPForNextLevel(currentLevel)) {
         currentXP -= getXPForNextLevel(currentLevel);
         currentLevel += 1;
         levelUpOccurred = true;
@@ -195,7 +195,7 @@ export function useGamifiedState() {
   };
 
   // Add a task
-  const addTask = useCallback((title: string, description: string, difficulty: Difficulty, category: TaskCategory, estimatedFocusPomodoros: number) => {
+  const addTask = useCallback((title: string, description: string, difficulty: Difficulty, category: TaskCategory, estimatedFocusPomodoros: number, priority: Priority = 'medium') => {
     const xpRewardMap: Record<Difficulty, number> = {
       easy: 40,
       medium: 80,
@@ -208,6 +208,7 @@ export function useGamifiedState() {
       description: description || undefined,
       difficulty,
       category,
+      priority,
       xpReward: xpRewardMap[difficulty],
       completed: false,
       createdAt: new Date().toISOString(),

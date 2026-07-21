@@ -1,5 +1,6 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type TaskCategory = 'work' | 'study' | 'health' | 'organization' | 'creative';
+export type Priority = 'low' | 'medium' | 'high';
 
 export interface Task {
   id: string;
@@ -7,6 +8,7 @@ export interface Task {
   description?: string;
   difficulty: Difficulty;
   category: TaskCategory;
+  priority?: Priority;
   xpReward: number;
   completed: boolean;
   completedAt?: string;

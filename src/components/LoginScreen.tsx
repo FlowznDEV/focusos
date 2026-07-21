@@ -50,7 +50,13 @@ export default function LoginScreen({ onLoginSuccess, onPlayOffline }: LoginScre
         body: JSON.stringify({ email: email.trim(), password })
       });
 
-      const data = await response.json();
+      let data: any;
+      const text = await response.text();
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        throw new Error('Formato de resposta inválido do servidor ou erro interno de conexão.');
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Ocorreu um erro ao processar sua solicitação.');

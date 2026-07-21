@@ -57,7 +57,15 @@ export default function App() {
   // Session & Authentication states
   const [session, setSession] = useState<{ email: string; token: string } | null>(() => {
     const saved = localStorage.getItem('focus_quest_user_session');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Error parsing user session:", e);
+        localStorage.removeItem('focus_quest_user_session');
+      }
+    }
+    return null;
   });
   const [isOfflineMode, setIsOfflineMode] = useState(() => {
     return localStorage.getItem('focus_quest_offline_mode') === 'true';
@@ -78,7 +86,15 @@ export default function App() {
   // App functions tracked for premium eligibility
   const [usedFunctions, setUsedFunctions] = useState<string[]>(() => {
     const saved = localStorage.getItem('focus_quest_used_functions');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Error parsing used functions:", e);
+        localStorage.removeItem('focus_quest_used_functions');
+      }
+    }
+    return [];
   });
 
   const trackFunctionUsed = useCallback((func: string) => {
@@ -465,8 +481,16 @@ export default function App() {
             const res = await fetch(`/api/supabase/sync/${email}`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
-            const body = await res.json();
-            if (res.ok && body.found && body.data) {
+            let body: any = null;
+            if (res.ok) {
+              try {
+                const text = await res.text();
+                body = JSON.parse(text);
+              } catch (parseErr) {
+                console.error("Failed to parse sync response JSON:", parseErr);
+              }
+            }
+            if (res.ok && body && body.found && body.data) {
               setCloudConflict(body.data);
             } else {
               setSyncStatus('syncing');

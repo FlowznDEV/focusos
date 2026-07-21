@@ -248,7 +248,7 @@ export default function LoginScreen({ onLoginSuccess, onPlayOffline }: LoginScre
           
           <div className="flex items-center justify-center gap-4 text-[10px] text-zinc-600 font-medium">
             <span className="flex items-center gap-1">
-              <Database className="w-3 h-3 text-emerald-500/60" /> Supabase Integrado
+              <Database className="w-3 h-3 text-emerald-500/60" /> Banco de dados Integrado
             </span>
             <span className="w-1 h-1 bg-zinc-800 rounded-full" />
             <span className="flex items-center gap-1">

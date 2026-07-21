@@ -1,5 +1,5 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend } from 'recharts';
-import { Award, Zap, Clock, CheckSquare, Sparkles, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend, PieChart, Pie, Cell } from 'recharts';
+import { Award, Zap, Clock, CheckSquare, Sparkles, TrendingUp, PieChart as LucidePieChart } from 'lucide-react';
 import { UserStats, Task } from '../types';
 import { getXPForNextLevel } from '../useGamifiedState';
 import RpgProgressionMap from './RpgProgressionMap';
@@ -37,6 +37,20 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
       'Concluídas': completed,
     };
   });
+
+  // Focus distribution based on tags of completed tasks
+  const completedTasks = tasks.filter(t => t.completed);
+  const completedByCategory = completedTasks.reduce((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const pieChartData = Object.entries(categoryLabels).map(([key, label]) => ({
+    name: label,
+    value: completedByCategory[key] || 0,
+  })).filter(item => item.value > 0);
+
+  const PIE_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4'];
 
   // 2. Process XP Logs for Area Chart
   // We reverse the logs so chronological order is left to right, and show cumulative or immediate values
@@ -260,6 +274,54 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
                   <Bar dataKey="Concluídas" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} name="Concluídas" />
                   <Bar dataKey="Pendentes" stackId="a" fill="#27272a" radius={[4, 4, 0, 0]} name="Pendentes" />
                 </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Chart 3: Distribuição de Foco por Tags/Categorias (Gráfico de Pizza) */}
+        <div id="focus-distribution-pie-chart" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs">
+          <div className="mb-4">
+            <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
+              <LucidePieChart className="w-4 h-4 text-pink-400" />
+              <span>Distribuição de Foco</span>
+            </h4>
+            <p className="text-[11px] text-zinc-500 mt-0.5">Foco investido por tipo de missão/tag das tarefas concluídas</p>
+          </div>
+
+          <div className="h-64 w-full flex items-center justify-center">
+            {pieChartData.length === 0 ? (
+              <div className="text-center p-4">
+                <p className="text-xs text-zinc-500">Nenhuma missão foi concluída ainda.</p>
+                <p className="text-[10px] text-zinc-600 mt-1">Conclua tarefas de Trabalho, Estudo ou outras categorias para preencher o gráfico!</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieChartData}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {pieChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '12px', fontSize: '11px', color: '#fff' }}
+                    formatter={(value: any) => [`${value} tarefas`, 'Volume']}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36} 
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: '10px', bottom: 10 }} 
+                  />
+                </PieChart>
               </ResponsiveContainer>
             )}
           </div>

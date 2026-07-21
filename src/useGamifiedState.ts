@@ -53,12 +53,38 @@ export function useGamifiedState() {
     const savedJournal = localStorage.getItem('focus_quest_journal');
     const savedGoals = localStorage.getItem('focus_quest_long_term_goals');
 
-    if (savedTasks) setTasks(JSON.parse(savedTasks));
-    if (savedJournal) setJournalEntries(JSON.parse(savedJournal));
-    if (savedGoals) setLongTermGoals(JSON.parse(savedGoals));
+    if (savedTasks) {
+      try {
+        setTasks(JSON.parse(savedTasks));
+      } catch (e) {
+        console.error("Error parsing saved tasks:", e);
+        setTasks([]);
+      }
+    }
+    if (savedJournal) {
+      try {
+        setJournalEntries(JSON.parse(savedJournal));
+      } catch (e) {
+        console.error("Error parsing journal entries:", e);
+        setJournalEntries([]);
+      }
+    }
+    if (savedGoals) {
+      try {
+        setLongTermGoals(JSON.parse(savedGoals));
+      } catch (e) {
+        console.error("Error parsing long term goals:", e);
+        setLongTermGoals([]);
+      }
+    }
     
     if (savedAchievements) {
-      setAchievements(JSON.parse(savedAchievements));
+      try {
+        setAchievements(JSON.parse(savedAchievements));
+      } catch (e) {
+        console.error("Error parsing saved achievements:", e);
+        setAchievements(DEFAULT_ACHIEVEMENTS);
+      }
     } else {
       setAchievements(DEFAULT_ACHIEVEMENTS);
     }
@@ -66,36 +92,54 @@ export function useGamifiedState() {
     const todayStr = new Date().toISOString().split('T')[0];
 
     if (savedStats) {
-      const parsedStats: UserStats = JSON.parse(savedStats);
-      
-      // Streak logic
-      let currentStreak = parsedStats.streak || 1;
-      const lastActive = parsedStats.lastActiveDate;
+      try {
+        const parsedStats: UserStats = JSON.parse(savedStats);
+        
+        // Streak logic
+        let currentStreak = parsedStats.streak || 1;
+        const lastActive = parsedStats.lastActiveDate;
 
-      if (lastActive && lastActive !== todayStr) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        if (lastActive && lastActive !== todayStr) {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-        if (lastActive === yesterdayStr) {
-          currentStreak += 1;
-          // Trigger notification for daily streak increase!
-          setActiveNotification({
-            id: 'streak_' + Date.now(),
-            type: 'xp_gain',
-            title: `Sequência de ${currentStreak} Dias!`,
-            message: 'Você entrou mais um dia consecutivo para manter o controle.',
-          });
-        } else {
-          currentStreak = 1; // reset streak
+          if (lastActive === yesterdayStr) {
+            currentStreak += 1;
+            // Trigger notification for daily streak increase!
+            setActiveNotification({
+              id: 'streak_' + Date.now(),
+              type: 'xp_gain',
+              title: `Sequência de ${currentStreak} Dias!`,
+              message: 'Você entrou mais um dia consecutivo para manter o controle.',
+            });
+          } else {
+            currentStreak = 1; // reset streak
+          }
         }
-      }
 
-      setStats({
-        ...parsedStats,
-        streak: currentStreak,
-        lastActiveDate: todayStr,
-      });
+        setStats({
+          ...parsedStats,
+          streak: currentStreak,
+          lastActiveDate: todayStr,
+        });
+      } catch (e) {
+        console.error("Error parsing saved stats:", e);
+        setStats({
+          xp: 0,
+          level: 1,
+          streak: 1,
+          lastActiveDate: todayStr,
+          totalTasksCompleted: 0,
+          totalFocusMinutes: 0,
+          xpLogs: [{
+            id: 'welcome',
+            amount: 50,
+            reason: 'Início da jornada Foco Gamificado!',
+            timestamp: new Date().toISOString()
+          }],
+        });
+      }
     } else {
       setStats({
         xp: 0,

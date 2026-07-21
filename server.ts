@@ -72,22 +72,53 @@ app.post("/api/motivate", async (req, res) => {
       ? `\n- O usuário favoritou/curtiu estas dicas no passado, então ele prefere um tom e estilo que se alinhe com elas: "${likedQuotes.slice(-4).join('"; "')}"`
       : "";
 
+    // Calculate Intelligence Tier and specific guidelines
+    const userLevel = Number(level) || 1;
+    let intelligenceTier = "";
+    let tierGuidelines = "";
+
+    if (userLevel <= 3) {
+      intelligenceTier = "Nível de Inteligência I: Foco Primitivo (Iniciante)";
+      tierGuidelines = `Instruções do Nível I:
+1. Ofereça sugestões físicas e mentais extremamente simples de no máximo 1-2 minutos para romper totalmente a inércia (ex: 'Beba um gole de água', 'Abra o editor e digite uma letra', 'Respire fundo uma vez').
+2. O tom deve ser ultra-acolhedor, gentil, compreensivo e com zero cobrança. Evite sugerir metas demoradas ou complexas.`;
+    } else if (userLevel <= 7) {
+      intelligenceTier = "Nível de Inteligência II: Fluxo Consciente (Prático)";
+      tierGuidelines = `Instruções do Nível II:
+1. Sugira táticas ambientais práticas para evitar distração e criar pequenos blocos de foco de no máximo 10-15 minutos (ex: 'Feche todas as abas, menos a da tarefa', 'Guarde o celular na gaveta', 'Coloque um fone de ouvido silencioso').
+2. O tom deve ser ativo, dinâmico e focado em ações externas imediatas que organizam o espaço e a mente.`;
+    } else if (userLevel <= 11) {
+      intelligenceTier = "Nível de Inteligência III: Mentalidade Blindada (Estratega)";
+      tierGuidelines = `Instruções do Nível III:
+1. Sugira estratégias de planejamento e psicologia cognitiva um pouco mais profundas (ex: 'Faça um agrupamento rápido de 3 tarefas semelhantes', 'Decida a prioridade real do seu dia em 30 segundos', 'Pratique 5 minutos de foco ininterrupto para testar o embalo').
+2. O tom deve ser estratégico, focado em autogestão de energia, inteligência emocional e superação de ruídos mentais.`;
+    } else {
+      intelligenceTier = "Nível de Inteligência IV: Foco Transcendental (Soberano/Lenda)";
+      tierGuidelines = `Instruções do Nível IV:
+1. Sugira técnicas profundas de psicologia de alta performance, triggers de Estado de Flow, meditação de foco absoluto, e protocolos de Deep Work (Trabalho Profundo) extremos (ex: 'Entre em isolamento cibernético absoluto por 25 minutos', 'Pratique a ancoragem de respiração diafragmática rápida antes do play', 'Crie um ritual intencional de início de bloco mental').
+2. O tom deve ser altamente inspirador, sábio, personalizado, sofisticado e focado na excelência mental.`;
+    }
+
     const prompt = `
 Você é o "Treinador de Foco Inteligente", um assistente extremamente acolhedor, gentil e prático projetado para ajudar pessoas com TDAH, ansiedade ou extrema dificuldade de manter o foco.
 O usuário está tentando gerenciar suas tarefas diárias, mas precisa de incentivo agora.
 
-Contexto atual do usuário:
-- Nível atual no app: ${level || 1} de 150 (onde 150 é o nível lendário máximo)
-- Sequência atual (streak) de dias: ${streak || 0} dias
-- Total de tarefas concluídas: ${totalTasksCompleted || 0}
+Dados de Progressão do Usuário:
+- Nível de Experiência Atual: Nível ${userLevel} de 15 (onde 15 é o nível máximo absoluto de prestígio)
+- Nível de Inteligência do Coach: ${intelligenceTier}
+- Sequência atual (streak) de dias ativos: ${streak || 0} dias
+- Total de tarefas concluídas no total: ${totalTasksCompleted || 0}
 - Como ele diz que está se sentindo agora ou o seu dilema: "${feeling || "Me sinto distraído e sem energia para começar"}"
 - Tarefa em que quer focar (se houver): "${currentTask || "Nenhuma tarefa selecionada"}"${quotesContext}
 
-Regras importantes de redação:
+Regras importantes de redação baseadas no Nível de Inteligência do Usuário:
+${tierGuidelines}
+
+Regras de Saída:
 1. Responda em Português do Brasil (PT-BR).
-2. Escreva com extrema compaixão, sem julgamentos e com zero pressão. Fale como um amigo que compreende a dificuldade do foco.
-3. Evite parágrafos longos ou termos difíceis. Use orações curtas.
-4. "suggestedFocusGoal" DEVE ser uma tarefa física ou mental extremamente simples, ridiculamente fácil de cumprir (menos de 2 minutos de esforço), para reduzir a barreira de entrada (ex: "Apenas abra o documento e escreva o título", "Coloque seu fone de ouvido sem música", "Feche todas as abas, exceto uma").
+2. Escreva com extrema compaixão, sem julgamentos e com zero pressão. Fale de forma acolhedora.
+3. Evite parágrafos longos ou termos desnecessariamente difíceis, mantendo a resposta altamente scannable e limpa.
+4. "suggestedFocusGoal" deve obedecer rigorosamente a complexidade do Nível de Inteligência atual (${intelligenceTier}).
 
 Gere os campos estritamente no formato JSON fornecido pelo esquema.
 `;
@@ -96,22 +127,22 @@ Gere os campos estritamente no formato JSON fornecido pelo esquema.
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
-        systemInstruction: "Você é um assistente compassivo e curto para foco e TDAH. Escreva sempre em português (PT-BR). Retorne um JSON válido contendo exatamente as chaves: motivationalMessage, suggestedFocusGoal e supportiveTagline.",
+        systemInstruction: "Você é um assistente compassivo para foco e TDAH. Escreva sempre em português (PT-BR). Retorne um JSON válido contendo exatamente as chaves: motivationalMessage, suggestedFocusGoal e supportiveTagline.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             motivationalMessage: {
               type: Type.STRING,
-              description: "Mensagem motivacional empática e curta. Máximo de 140 caracteres.",
+              description: "Mensagem motivacional empática e de tamanho ideal. Máximo de 140 caracteres.",
             },
             suggestedFocusGoal: {
               type: Type.STRING,
-              description: "Uma meta ridícula e incrivelmente fácil de realizar em 1 ou 2 minutos para iniciar a ação.",
+              description: "Uma sugestão de meta de foco cuja complexidade e profundidade correspondem estritamente às diretrizes de seu Nível de Inteligência atual.",
             },
             supportiveTagline: {
               type: Type.STRING,
-              description: "Um slogan curto de impacto, como 'Um passo de cada vez' ou 'O foco vem fazendo'.",
+              description: "Um slogan de suporte, reflexão ou impacto alinhado com o patamar atingido.",
             },
           },
           required: ["motivationalMessage", "suggestedFocusGoal", "supportiveTagline"],

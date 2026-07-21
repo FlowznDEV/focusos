@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGamifiedState, getXPForNextLevel } from './useGamifiedState';
 import { Task } from './types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -13,7 +13,7 @@ import ShareCardModal from './components/ShareCardModal';
 import JournalTab from './components/JournalTab';
 import LongTermGoals from './components/LongTermGoals';
 import LoginScreen from './components/LoginScreen';
-import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check } from 'lucide-react';
+import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound } from './lib/sound';
 
 const FOCUS_TIPS = [
@@ -116,6 +116,38 @@ export default function App() {
   }, [tasks, stats, achievements, session, cloudConflict]);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [prevLevel, setPrevLevel] = useState<number | null>(null);
+  const [showLevelParticles, setShowLevelParticles] = useState(false);
+
+  // Monitor level-up to trigger particles
+  useEffect(() => {
+    if (stats && stats.level) {
+      if (prevLevel !== null && stats.level > prevLevel) {
+        setShowLevelParticles(true);
+        const timer = setTimeout(() => {
+          setShowLevelParticles(false);
+        }, 4000);
+        return () => clearTimeout(timer);
+      }
+      setPrevLevel(stats.level);
+    }
+  }, [stats.level, prevLevel]);
+
+  // Automatic Theme (Day/Night) detection based on system hour
+  const [isNight, setIsNight] = useState(() => {
+    const hour = new Date().getHours();
+    return hour >= 18 || hour < 6;
+  });
+
+  useEffect(() => {
+    const checkHour = () => {
+      const hour = new Date().getHours();
+      setIsNight(hour >= 18 || hour < 6);
+    };
+    checkHour();
+    const interval = setInterval(checkHour, 60000); // Check every 60s
+    return () => clearInterval(interval);
+  }, []);
 
   const executeReset = () => {
     setShowResetConfirm(false);
@@ -147,53 +179,7 @@ export default function App() {
     }
   }, [zenMode]);
 
-  // If the user has not logged in and is not in offline mode, show Login Screen
-  if (!session && !isOfflineMode) {
-    return (
-      <LoginScreen
-        onLoginSuccess={async (email, token) => {
-          const newSession = { email, token };
-          setSession(newSession);
-          localStorage.setItem('focus_quest_user_session', JSON.stringify(newSession));
-          localStorage.setItem('focus_quest_offline_mode', 'false');
-          setIsOfflineMode(false);
-          
-          try {
-            setSyncStatus('syncing');
-            const res = await fetch(`/api/supabase/sync/${email}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const body = await res.json();
-            if (res.ok && body.found && body.data) {
-              setCloudConflict(body.data);
-            } else {
-              setSyncStatus('syncing');
-              await fetch(`/api/supabase/sync/${email}`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  tasks,
-                  stats,
-                  achievements
-                })
-              });
-              setSyncStatus('synced');
-            }
-          } catch (e) {
-            console.error("Conflict checking failed:", e);
-            setSyncStatus('error');
-          }
-        }}
-        onPlayOffline={() => {
-          setIsOfflineMode(true);
-          localStorage.setItem('focus_quest_offline_mode', 'true');
-        }}
-      />
-    );
-  }
+
 
   // Idle Notification State
   const [idleNotification, setIdleNotification] = useState<{
@@ -303,9 +289,79 @@ export default function App() {
 
   const activeTaskTitle = selectedTask && !selectedTask.completed ? selectedTask.title : undefined;
 
+  // If the user has not logged in and is not in offline mode, show Login Screen
+  if (!session && !isOfflineMode) {
+    return (
+      <LoginScreen
+        onLoginSuccess={async (email, token) => {
+          const newSession = { email, token };
+          setSession(newSession);
+          localStorage.setItem('focus_quest_user_session', JSON.stringify(newSession));
+          localStorage.setItem('focus_quest_offline_mode', 'false');
+          setIsOfflineMode(false);
+          
+          try {
+            setSyncStatus('syncing');
+            const res = await fetch(`/api/supabase/sync/${email}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const body = await res.json();
+            if (res.ok && body.found && body.data) {
+              setCloudConflict(body.data);
+            } else {
+              setSyncStatus('syncing');
+              await fetch(`/api/supabase/sync/${email}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  tasks,
+                  stats,
+                  achievements
+                })
+              });
+              setSyncStatus('synced');
+            }
+          } catch (e) {
+            console.error("Conflict checking failed:", e);
+            setSyncStatus('error');
+          }
+        }}
+        onPlayOffline={() => {
+          setIsOfflineMode(true);
+          localStorage.setItem('focus_quest_offline_mode', 'true');
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#05060a] text-zinc-100 pb-16 relative font-sans">
+    <div className={`min-h-screen bg-[#05060a] text-zinc-100 pb-16 relative font-sans transition-all duration-[1200ms] ease-in-out ${
+      isNight 
+        ? 'brightness-[0.93] contrast-[0.96] saturate-[0.92] [color-scheme:dark] sepia-[0.04]' 
+        : 'brightness-100 contrast-100 saturate-100'
+    }`}>
       
+      <style>{`
+        @keyframes levelParticle {
+          0% {
+            transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(1);
+            opacity: 1;
+            filter: drop-shadow(0 0 4px #22d3ee);
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(var(--angle)) translateY(-40px) scale(0);
+            opacity: 0;
+            filter: drop-shadow(0 0 8px #818cf8);
+          }
+        }
+      `}</style>
+
       {/* Confetti canvas animation container */}
           {/* Floating Smart Dynamic Notifications Toast */}
       {activeNotification && (
@@ -424,6 +480,19 @@ export default function App() {
                   </button>
                 </div>
               )}
+
+              {/* Day/Night Theme pill */}
+              <div 
+                className={`flex items-center space-x-1.5 border rounded-xl px-2.5 py-1 text-[9px] font-mono font-bold transition-all duration-500 shrink-0 ${
+                  isNight 
+                    ? 'bg-indigo-950/20 border-indigo-500/20 text-indigo-400' 
+                    : 'bg-amber-950/20 border-amber-500/20 text-amber-400'
+                }`}
+                title={isNight ? "Filtro Noturno Ativo: Brilho reduzido" : "Filtro Diurno Ativo: Alto Contraste"}
+              >
+                {isNight ? <Moon className="w-3 h-3 text-indigo-400 animate-pulse" /> : <Sun className="w-3 h-3 text-amber-400" />}
+                <span className="hidden sm:inline uppercase tracking-widest">{isNight ? "Leitura Noturna" : "Contraste Diurno"}</span>
+              </div>
             </div>
 
             {/* Quick Action buttons */}
@@ -484,12 +553,39 @@ export default function App() {
               <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
                 <div className="flex items-center gap-3">
                   {/* Level Badge with subtle background color */}
-                  <div className="flex items-center space-x-2.5 bg-cyan-950/30 border border-cyan-500/20 rounded-xl px-3 py-2 hover:border-cyan-500/50 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.05)]">
+                  <div className="relative overflow-visible flex items-center space-x-2.5 bg-cyan-950/30 border border-cyan-500/20 rounded-xl px-3 py-2 hover:border-cyan-500/50 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.05)]">
                     <Award className="w-4 h-4 text-cyan-400 shrink-0" />
                     <div className="leading-none">
                       <span className="block text-[8px] text-cyan-300 uppercase tracking-widest font-bold font-mono">Nível</span>
                       <span className="text-xs font-black text-white font-mono">{stats.level} <span className="text-[9px] text-zinc-600">/ 15</span></span>
                     </div>
+
+                    {showLevelParticles && (
+                      <>
+                        {/* Pulsing glow rings around badge */}
+                        <span className="absolute inset-0 rounded-xl border border-cyan-400 animate-ping opacity-75 pointer-events-none" />
+                        <span className="absolute -inset-1 rounded-xl bg-cyan-500/10 blur-sm animate-pulse pointer-events-none" />
+                        
+                        {/* 12 energy particles radiating outward */}
+                        {[...Array(12)].map((_, i) => {
+                          const angle = (i * 360) / 12;
+                          const delay = (i % 3) * 0.15;
+                          return (
+                            <span
+                              key={i}
+                              className="absolute w-1.5 h-1.5 bg-gradient-to-r from-cyan-400 to-indigo-400 rounded-full pointer-events-none"
+                              style={{
+                                left: '50%',
+                                top: '50%',
+                                '--angle': `${angle}deg`,
+                                animation: `levelParticle 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) infinite`,
+                                animationDelay: `${delay}s`
+                              } as React.CSSProperties}
+                            />
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
 
                   {/* Day Streak Badge with heartbeat animation */}

@@ -16,6 +16,42 @@ const FEELING_PRESETS = [
   { label: 'Sem Energia 💤', value: 'Estou cansado e quero uma micro-meta ridícula e boba de 1 minuto para quebrar a inércia.' }
 ];
 
+const getIntelligenceTier = (lvl: number) => {
+  if (lvl <= 3) {
+    return {
+      title: 'Nível I — Foco Primitivo',
+      badge: 'Iniciante',
+      color: 'border-amber-500/20 bg-amber-950/5 text-amber-400',
+      desc: 'Minimiza a barreira de entrada sugerindo ações físicas ou mentais de até 1-2 minutos.',
+      percent: 25
+    };
+  } else if (lvl <= 7) {
+    return {
+      title: 'Nível II — Fluxo Consciente',
+      badge: 'Prático',
+      color: 'border-cyan-500/20 bg-cyan-950/5 text-cyan-400',
+      desc: 'Usa táticas ambientais personalizadas e sugere micro-blocos de foco práticos de 10-15 minutos.',
+      percent: 50
+    };
+  } else if (lvl <= 11) {
+    return {
+      title: 'Nível III — Mentalidade Blindada',
+      badge: 'Estratega',
+      color: 'border-indigo-500/20 bg-indigo-950/5 text-indigo-400',
+      desc: 'Sugere técnicas cognitivas avançadas, priorização rápida de energia e controle de estímulos.',
+      percent: 75
+    };
+  } else {
+    return {
+      title: 'Nível IV — Foco Transcendental',
+      badge: 'Soberano',
+      color: 'border-pink-500/20 bg-pink-950/5 text-pink-400',
+      desc: 'Gatilhos neurocognitivos de Estado de Flow, meditação expressa de foco e alta performance mental.',
+      percent: 100
+    };
+  }
+};
+
 export default function AICoach({ level, streak, totalTasksCompleted, currentTaskTitle }: AICoachProps) {
   const [feeling, setFeeling] = useState('');
   const [customInput, setCustomInput] = useState('');
@@ -27,6 +63,8 @@ export default function AICoach({ level, streak, totalTasksCompleted, currentTas
   });
   const [loading, setLoading] = useState(false);
   const [isPlayingSpeech, setIsPlayingSpeech] = useState(false);
+
+  const tierInfo = getIntelligenceTier(level);
 
   // Load liked quotes to dynamically feed the AI coach model
   const loadLikedQuotes = () => {
@@ -163,6 +201,27 @@ export default function AICoach({ level, streak, totalTasksCompleted, currentTas
             >
               <Volume2 className={`w-4 h-4 ${isPlayingSpeech ? 'animate-bounce' : ''}`} />
             </button>
+          </div>
+        </div>
+
+        {/* Intelligence Tier HUD Indicator */}
+        <div className={`mb-4 p-3 rounded-2xl border ${tierInfo.color} flex flex-col gap-1.5 transition-all duration-300`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-bold uppercase tracking-widest font-mono opacity-80">// Nível de Inteligência IA</span>
+            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-zinc-950 border border-white/5 uppercase tracking-wider">
+              {tierInfo.badge}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Brain className="w-3.5 h-3.5 animate-pulse text-pink-400" />
+            <h4 className="text-xs font-bold text-white tracking-tight">{tierInfo.title}</h4>
+          </div>
+          <p className="text-[10px] opacity-80 leading-relaxed">{tierInfo.desc}</p>
+          <div className="w-full bg-zinc-950/80 h-1.5 rounded-full overflow-hidden mt-1 border border-zinc-900">
+            <div 
+              className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 h-full transition-all duration-500 rounded-full" 
+              style={{ width: `${tierInfo.percent}%` }}
+            />
           </div>
         </div>
 

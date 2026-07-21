@@ -12,7 +12,7 @@ import DailyTip from './components/DailyTip';
 import ShareCardModal from './components/ShareCardModal';
 import JournalTab from './components/JournalTab';
 import LongTermGoals from './components/LongTermGoals';
-import LoginScreen from './components/LoginScreen';
+import OnboardingScreen from './components/OnboardingScreen';
 import PremiumModal from './components/PremiumModal';
 import PremiumWelcome from './components/PremiumWelcome';
 import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon } from 'lucide-react';
@@ -82,6 +82,9 @@ export default function App() {
     return localStorage.getItem('focus_quest_show_welcome') === 'true';
   });
   const [showPremiumModal, setShowPremiumModal] = useState<boolean>(false);
+  const [showPremiumPrompt, setShowPremiumPrompt] = useState<boolean>(() => {
+    return localStorage.getItem('focus_quest_premium_prompt_dismissed') !== 'true';
+  });
 
   // App functions tracked for premium eligibility
   const [usedFunctions, setUsedFunctions] = useState<string[]>(() => {
@@ -420,6 +423,8 @@ export default function App() {
   const handleSimulateDays = () => {
     setSimulatedDays(1);
     localStorage.setItem('focus_quest_simulated_days', '1');
+    localStorage.removeItem('focus_quest_premium_prompt_dismissed');
+    setShowPremiumPrompt(true);
   };
 
   const xpNeeded = getXPForNextLevel(stats.level);
@@ -452,70 +457,47 @@ export default function App() {
     );
   }
 
-  // If the user has not logged in and is not in offline mode, show Login Screen
-  if (!session && !isOfflineMode) {
+  // If the user has not logged in / onboarded, show Onboarding Welcome Screen
+  if (!session) {
     return (
-      <LoginScreen
-        onLoginSuccess={async (email, token, userPremium, userPlanType) => {
+      <OnboardingScreen
+        onJoin={async (nickname, email, token) => {
           const newSession = { email, token };
           setSession(newSession);
           localStorage.setItem('focus_quest_user_session', JSON.stringify(newSession));
           localStorage.setItem('focus_quest_offline_mode', 'false');
           setIsOfflineMode(false);
           
-          if (userPremium) {
-            setPremium(true);
-            localStorage.setItem('focus_quest_premium', 'true');
-            if (userPlanType) {
-              setPlanType(userPlanType);
-              localStorage.setItem('focus_quest_plan_type', userPlanType);
-            }
-          } else {
-            setPremium(false);
-            localStorage.removeItem('focus_quest_premium');
-            localStorage.removeItem('focus_quest_plan_type');
-          }
+          setPremium(false);
+          localStorage.removeItem('focus_quest_premium');
+          localStorage.removeItem('focus_quest_plan_type');
           
           try {
             setSyncStatus('syncing');
             const res = await fetch(`/api/supabase/sync/${email}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            let body: any = null;
-            if (res.ok) {
-              try {
-                const text = await res.text();
-                body = JSON.parse(text);
-              } catch (parseErr) {
-                console.error("Failed to parse sync response JSON:", parseErr);
-              }
-            }
-            if (res.ok && body && body.found && body.data) {
-              setCloudConflict(body.data);
-            } else {
-              setSyncStatus('syncing');
-              await fetch(`/api/supabase/sync/${email}`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                tasks,
+                stats: {
+                  ...stats,
+                  nickname
                 },
-                body: JSON.stringify({
-                  tasks,
-                  stats,
-                  achievements
-                })
-              });
+                achievements
+              })
+            });
+            if (res.ok) {
               setSyncStatus('synced');
+            } else {
+              setSyncStatus('error');
             }
           } catch (e) {
-            console.error("Conflict checking failed:", e);
+            console.error("Initial onboarding sync failed:", e);
             setSyncStatus('error');
           }
-        }}
-        onPlayOffline={() => {
-          setIsOfflineMode(true);
-          localStorage.setItem('focus_quest_offline_mode', 'true');
         }}
       />
     );
@@ -619,10 +601,10 @@ export default function App() {
             {/* Logo area - Sleek & Ultra Minimalist with Supabase Integration */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <div className="flex items-center space-x-1.5 sm:space-x-2 group cursor-pointer" onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}>
-                <div className="w-8 h-8 bg-zinc-900 border border-zinc-800 rounded-lg flex items-center justify-center transition-all duration-300 hover:border-zinc-700 shrink-0">
-                  <Sparkles className="w-4 h-4 text-zinc-300 group-hover:text-white transition-colors" />
+                <div className="w-8 h-8 bg-zinc-950 border border-emerald-500/30 rounded-lg flex items-center justify-center transition-all duration-300 hover:border-emerald-400 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                  <Sparkles className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 transition-colors" />
                 </div>
-                <span className="text-[11px] font-bold tracking-widest text-zinc-400 group-hover:text-zinc-200 uppercase font-mono hidden sm:inline">JORNADA</span>
+                <span className="text-sm font-black tracking-wider text-white uppercase font-sans group-hover:text-emerald-300 transition-colors">FocusOS</span>
               </div>
 
               {/* Session Pill */}
@@ -717,8 +699,8 @@ export default function App() {
                 >
                   <Sparkles className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
                   <span className="hidden sm:inline ml-1.5 font-bold font-mono">Premium RPG</span>
-                  {/* Glowing eligibility indicator dot if ALL conditions are met! */}
-                  {(stats.totalTasksCompleted >= 5 && usedFunctions.filter(f => ['sound', 'filter', 'zen', 'task', 'journal'].includes(f)).length >= 5 && getDaysOfUse() >= 1) && (
+                  {/* Glowing eligibility indicator dot if 1 day of use is met */}
+                  {getDaysOfUse() >= 1 && (
                     <>
                       <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping pointer-events-none" />
                       <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-zinc-950 pointer-events-none" />
@@ -824,8 +806,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'tasks'
-                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <CheckSquare className="w-3.5 h-3.5" />
@@ -836,8 +818,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'stats'
-                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <BarChart2 className="w-3.5 h-3.5" />
@@ -848,8 +830,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'coach'
-                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <Brain className="w-3.5 h-3.5" />
@@ -860,8 +842,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'achievements'
-                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <Trophy className="w-3.5 h-3.5" />
@@ -872,8 +854,8 @@ export default function App() {
                 onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeMainTab === 'journal'
-                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.12)] font-extrabold'
+                    : 'text-zinc-500 hover:text-emerald-300 hover:bg-zinc-900/30 border border-transparent'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
@@ -894,7 +876,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'tasks' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+              activeMainTab === 'tasks' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <CheckSquare className="w-5 h-5 mb-1" />
@@ -904,7 +886,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'stats' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+              activeMainTab === 'stats' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <BarChart2 className="w-5 h-5 mb-1" />
@@ -914,7 +896,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'coach' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+              activeMainTab === 'coach' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <Brain className="w-5 h-5 mb-1" />
@@ -924,7 +906,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'achievements' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+              activeMainTab === 'achievements' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <Trophy className="w-5 h-5 mb-1" />
@@ -934,7 +916,7 @@ export default function App() {
           <button
             onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'journal' ? 'text-white bg-zinc-850 border border-zinc-750 font-bold' : 'text-zinc-500 font-medium'
+              activeMainTab === 'journal' ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
             <BookOpen className="w-5 h-5 mb-1" />
@@ -945,6 +927,45 @@ export default function App() {
 
       {/* Main Content Workspace Grid */}
       <main className="w-full px-4 sm:px-6 md:px-8 lg:px-10 mt-6 pb-24 md:pb-6 overflow-x-hidden">
+        {/* Active Premium purchase notification banner */}
+        {!premium && getDaysOfUse() >= 1 && showPremiumPrompt && (
+          <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-amber-950/80 via-yellow-950/80 to-amber-950/80 border border-amber-500/30 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(245,158,11,0.1)] relative overflow-hidden group animate-fade-in">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-400/50 to-transparent animate-pulse" />
+            <div className="flex items-center space-x-3.5 text-left">
+              <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-2xl text-amber-400 shrink-0">
+                <Sparkles className="w-5 h-5 animate-pulse text-amber-400" />
+              </div>
+              <div>
+                <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest block">// NOTIFICAÇÃO DE CHEFIA PREMIUM</span>
+                <h4 className="text-sm font-black text-white uppercase tracking-tight mt-0.5">Heroísmo Premium Liberado!</h4>
+                <p className="text-xs text-zinc-400 mt-1">Você completou <strong>1 dia de uso ativo</strong> na sua jornada FocusOS! Desbloqueie o Treinador IA, gráficos avançados e trilha RPG premium.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+              <button
+                onClick={() => {
+                  playTypeSound();
+                  setShowPremiumModal(true);
+                }}
+                className="flex-1 md:flex-initial bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-lg shadow-amber-500/10"
+              >
+                Liberar Agora
+              </button>
+              <button
+                onClick={() => {
+                  playTypeSound();
+                  setShowPremiumPrompt(false);
+                  localStorage.setItem('focus_quest_premium_prompt_dismissed', 'true');
+                }}
+                className="p-2.5 text-zinc-500 hover:text-white transition-colors rounded-xl cursor-pointer"
+                title="Fechar notificação"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           <motion.div
             key={activeMainTab}
@@ -985,7 +1006,7 @@ export default function App() {
                 )}
 
                 {/* RIGHT COLUMN: Interactive Focus Companion (occupies 5 of 12 columns) */}
-                <div className={zenMode ? 'w-full' : 'lg:col-span-5'} space-y-6>
+                <div className={`${zenMode ? 'w-full' : 'lg:col-span-5'} space-y-6`}>
                   {zenMode && (
                     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-center space-y-1.5 animate-pulse">
                       <div className="flex items-center justify-center space-x-2 text-zinc-400">
@@ -1393,7 +1414,7 @@ export default function App() {
 
       {/* Premium presentation & checkout dialog modal */}
       <PremiumModal
-        isOpen={showPremiumModal}
+        isOpen={showPremiumModal || (!premium && getDaysOfUse() >= 1)}
         onClose={() => setShowPremiumModal(false)}
         email={session?.email || 'usuario.teste@focusquest.com'}
         stats={{
@@ -1404,6 +1425,7 @@ export default function App() {
         usedFunctionsCount={usedFunctions.filter(f => ['sound', 'filter', 'zen', 'task', 'journal'].includes(f)).length}
         totalFunctionsCount={5} // Total active functions: sound, filter, zen, task, journal
         daysOfUse={getDaysOfUse()}
+        canClose={!(getDaysOfUse() >= 1 && !premium)}
         onPaymentSuccess={(type) => {
           setPremium(true);
           setPlanType(type);

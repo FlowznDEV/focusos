@@ -1,5 +1,6 @@
+import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend, PieChart, Pie, Cell } from 'recharts';
-import { Award, Zap, Clock, CheckSquare, Sparkles, TrendingUp, PieChart as LucidePieChart } from 'lucide-react';
+import { Award, Zap, Clock, CheckSquare, Sparkles, TrendingUp, PieChart as LucidePieChart, Trophy, Shield, Flame, Star } from 'lucide-react';
 import { UserStats, Task } from '../types';
 import { getXPForNextLevel } from '../useGamifiedState';
 import RpgProgressionMap from './RpgProgressionMap';
@@ -10,6 +11,32 @@ interface StatsDashboardProps {
 }
 
 export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
+  const [errorLeaderboard, setErrorLeaderboard] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchLeaderboard = async () => {
+      try {
+        setLoadingLeaderboard(true);
+        const res = await fetch('/api/leaderboard');
+        if (!res.ok) throw new Error("Erro ao carregar ranking global");
+        const data = await res.json();
+        if (active && data.leaderboard) {
+          setLeaderboard(data.leaderboard);
+        }
+      } catch (err: any) {
+        if (active) setErrorLeaderboard(err.message || "Erro de conexão com o ranking");
+      } finally {
+        if (active) setLoadingLeaderboard(false);
+      }
+    };
+    fetchLeaderboard();
+    return () => {
+      active = false;
+    };
+  }, []);
   // 1. Process tasks categories
   const categories = ['work', 'study', 'health', 'organization', 'creative'];
   const categoryLabels: Record<string, string> = {
@@ -386,6 +413,114 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      {/* Global Leaderboard Section */}
+      <div id="global-leaderboard-panel" className="bg-zinc-900/40 border border-zinc-800/60 p-6 rounded-3xl shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-zinc-800/60 gap-4">
+          <div>
+            <h4 className="text-sm font-bold text-white flex items-center space-x-2 uppercase tracking-tight">
+              <Trophy className="w-5 h-5 text-amber-500 animate-pulse" />
+              <span>Ranking Global de Guerreiros</span>
+            </h4>
+            <p className="text-[11px] text-zinc-500 mt-1">Meça sua dedicação contra outros heróis da produtividade em tempo real</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="inline-flex items-center text-[10px] bg-indigo-950/40 border border-indigo-900/50 text-indigo-400 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider font-mono">
+              ● Ranking Ativo
+            </span>
+          </div>
+        </div>
+
+        {loadingLeaderboard ? (
+          <div className="py-12 flex flex-col items-center justify-center space-y-3">
+            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs text-zinc-500 font-medium">Buscando classificações globais...</span>
+          </div>
+        ) : errorLeaderboard ? (
+          <div className="py-8 text-center text-xs text-red-400 bg-red-950/20 border border-red-900/40 rounded-2xl">
+            {errorLeaderboard}. Tente recarregar a página para tentar novamente.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-800/80 text-zinc-500 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-4 w-16 text-center">Rank</th>
+                  <th className="py-3 px-4">Guerreiro</th>
+                  <th className="py-3 px-4 text-center">Nível</th>
+                  <th className="py-3 px-4 text-center">Sequência</th>
+                  <th className="py-3 px-4 text-center hidden sm:table-cell">Tempo de Foco</th>
+                  <th className="py-3 px-4 text-center hidden sm:table-cell">Missões</th>
+                  <th className="py-3 px-4 text-right">XP Acumulado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-850">
+                {leaderboard.map((user) => {
+                  const isMe = stats.nickname ? user.name === stats.nickname : false;
+                  
+                  // Rank badge or indicator
+                  let rankDisplay: React.ReactNode = user.rank;
+                  if (user.rank === 1) {
+                    rankDisplay = <span className="inline-flex items-center justify-center w-6 h-6 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-full text-xs font-bold font-mono">🥇</span>;
+                  } else if (user.rank === 2) {
+                    rankDisplay = <span className="inline-flex items-center justify-center w-6 h-6 bg-zinc-300/10 border border-zinc-300/30 text-zinc-300 rounded-full text-xs font-bold font-mono">🥈</span>;
+                  } else if (user.rank === 3) {
+                    rankDisplay = <span className="inline-flex items-center justify-center w-6 h-6 bg-amber-700/10 border border-amber-700/30 text-amber-600 rounded-full text-xs font-bold font-mono">🥉</span>;
+                  } else {
+                    rankDisplay = <span className="font-mono text-zinc-500 font-bold">{user.rank}</span>;
+                  }
+
+                  return (
+                    <tr 
+                      key={user.email} 
+                      className={`hover:bg-zinc-900/20 transition-all duration-150 ${
+                        isMe 
+                          ? 'bg-indigo-950/20 border-y border-indigo-500/30 shadow-indigo-950/30 shadow-inner' 
+                          : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4 text-center">{rankDisplay}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center space-x-2">
+                          <span className={`font-semibold ${isMe ? 'text-indigo-400' : 'text-zinc-200'}`}>
+                            {user.name}
+                          </span>
+                          {isMe && (
+                            <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                              Você
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="inline-flex items-center justify-center space-x-1 font-mono font-bold text-zinc-300 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">
+                          <Star className="w-3 h-3 text-amber-500 fill-amber-500/20" />
+                          <span>{user.level}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="inline-flex items-center justify-center space-x-1 font-mono font-bold text-orange-400">
+                          <Flame className="w-3.5 h-3.5 fill-orange-500/10" />
+                          <span>{user.streak}d</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center hidden sm:table-cell font-mono text-zinc-400">
+                        {user.totalFocusMinutes || 0}m
+                      </td>
+                      <td className="py-3 px-4 text-center hidden sm:table-cell font-mono text-zinc-400">
+                        {user.totalTasksCompleted || 0}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-indigo-300">
+                        {user.xp} XP
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Recent XP Activity Logs (Sleek minimalist timeline) */}

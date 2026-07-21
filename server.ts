@@ -288,6 +288,178 @@ function authenticateRequest(req: any, res: any, next: any) {
   next();
 }
 
+// === ANONYMOUS ONBOARDING & LEADERBOARD ENDPOINTS ===
+
+// Anonymous Onboarding Route (Generates session seamlessly using only a nickname)
+app.post("/api/auth/anonymous", async (req, res) => {
+  const { nickname } = req.body;
+  if (!nickname || !nickname.trim()) {
+    return res.status(400).json({ error: "O nome de usuário ou nickname é obrigatório." });
+  }
+
+  const cleanNickname = nickname.trim();
+  const safeName = cleanNickname.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const email = `${safeName}_${randomSuffix}@focusquest.com`;
+
+  try {
+    const token = createSessionToken(email);
+
+    // Save user to local_db_users so they are persistent
+    const localUsers = readJsonFile(USERS_FILE);
+    localUsers[email] = {
+      email,
+      password: "anonymous_account_no_password",
+      nickname: cleanNickname,
+      created_at: new Date().toISOString()
+    };
+    writeJsonFile(USERS_FILE, localUsers);
+
+    // Initialize stats with nickname so the leaderboard has access to it!
+    const localSync = readJsonFile(SYNC_FILE);
+    localSync[email] = {
+      tasks: [],
+      stats: {
+        xp: 0,
+        level: 1,
+        streak: 1,
+        totalTasksCompleted: 0,
+        totalFocusMinutes: 0,
+        xpLogs: [{
+          id: 'welcome',
+          amount: 50,
+          reason: 'Início da jornada Foco Gamificado!',
+          timestamp: new Date().toISOString()
+        }],
+        nickname: cleanNickname
+      },
+      achievements: [],
+      updated_at: new Date().toISOString()
+    };
+    writeJsonFile(SYNC_FILE, localSync);
+
+    return res.json({
+      success: true,
+      user: {
+        email,
+        token,
+        nickname: cleanNickname,
+        premium: false,
+        planType: null
+      }
+    });
+  } catch (err: any) {
+    console.error("Anonymous authentication error:", err);
+    return res.status(500).json({ error: "Erro interno no servidor ao iniciar sessão." });
+  }
+});
+
+// Fetch Global Leaderboard Ranking List
+app.get("/api/leaderboard", async (req, res) => {
+  try {
+    // Let's load from Supabase focus_quest_sync if Supabase is connected
+    let supabaseUsers: any[] = [];
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("focus_quest_sync")
+          .select("email, stats");
+        if (!error && data) {
+          supabaseUsers = data;
+        }
+      } catch (err) {
+        console.warn("Could not load leaderboard from Supabase, falling back to local file:", err);
+      }
+    }
+
+    // Merge/Use local JSON fallback
+    const localSync = readJsonFile(SYNC_FILE);
+    
+    // Create a lookup map of stats
+    const userMap: Record<string, { level: number; streak: number; totalTasksCompleted: number; totalFocusMinutes: number; xp: number; name: string }> = {};
+
+    // 1. Process local sync users
+    for (const [email, userObj] of Object.entries(localSync) as [string, any][]) {
+      const stats = userObj?.stats || {};
+      const name = email.split('@')[0];
+      userMap[email] = {
+        level: typeof stats.level === 'number' ? stats.level : 1,
+        streak: typeof stats.streak === 'number' ? stats.streak : 0,
+        totalTasksCompleted: typeof stats.totalTasksCompleted === 'number' ? stats.totalTasksCompleted : 0,
+        totalFocusMinutes: typeof stats.totalFocusMinutes === 'number' ? stats.totalFocusMinutes : 0,
+        xp: typeof stats.xp === 'number' ? stats.xp : 0,
+        name: stats.nickname || name
+      };
+    }
+
+    // 2. Process Supabase users to enrich/override
+    for (const row of supabaseUsers) {
+      const email = row.email;
+      const stats = row.stats || {};
+      const name = email.split('@')[0];
+      userMap[email] = {
+        level: typeof stats.level === 'number' ? stats.level : 1,
+        streak: typeof stats.streak === 'number' ? stats.streak : 0,
+        totalTasksCompleted: typeof stats.totalTasksCompleted === 'number' ? stats.totalTasksCompleted : 0,
+        totalFocusMinutes: typeof stats.totalFocusMinutes === 'number' ? stats.totalFocusMinutes : 0,
+        xp: typeof stats.xp === 'number' ? stats.xp : 0,
+        name: stats.nickname || name
+      };
+    }
+
+    // Convert to array
+    const list = Object.entries(userMap).map(([email, info]) => ({
+      email,
+      name: info.name,
+      level: info.level,
+      streak: info.streak,
+      totalTasksCompleted: info.totalTasksCompleted,
+      totalFocusMinutes: info.totalFocusMinutes,
+      xp: info.xp
+    }));
+
+    // If there are too few or no users, let's seed some cool mock players for a vibrant gaming atmosphere
+    const seedNames = [
+      { name: "Gabriel_Foco_Maximo", level: 12, streak: 15, totalTasksCompleted: 142, totalFocusMinutes: 1240, xp: 450, email: "gabriel@focusquest.com" },
+      { name: "Beatriz_Guerreira", level: 10, streak: 8, totalTasksCompleted: 98, totalFocusMinutes: 890, xp: 220, email: "beatriz@focusquest.com" },
+      { name: "Rafael_Pro_Level", level: 9, streak: 12, totalTasksCompleted: 110, totalFocusMinutes: 940, xp: 180, email: "rafael@focusquest.com" },
+      { name: "Merlin_do_Foco", level: 15, streak: 21, totalTasksCompleted: 230, totalFocusMinutes: 2400, xp: 950, email: "merlin@focusquest.com" },
+      { name: "Ana_Mente_Brilhante", level: 6, streak: 4, totalTasksCompleted: 45, totalFocusMinutes: 410, xp: 120, email: "ana@focusquest.com" }
+    ];
+
+    for (const seed of seedNames) {
+      // Add only if not already in the list to avoid duplicate mock names
+      if (!list.some(u => u.name === seed.name || u.email === seed.email)) {
+        list.push(seed);
+      }
+    }
+
+    // Sort by: level desc, xp desc, streak desc
+    list.sort((a, b) => {
+      if (b.level !== a.level) return b.level - a.level;
+      if (b.xp !== a.xp) return b.xp - a.xp;
+      return b.streak - a.streak;
+    });
+
+    // Add rank (1-indexed)
+    const rankedList = list.map((user, idx) => ({
+      rank: idx + 1,
+      name: user.name,
+      email: user.email,
+      level: user.level,
+      streak: user.streak,
+      totalTasksCompleted: user.totalTasksCompleted,
+      totalFocusMinutes: user.totalFocusMinutes,
+      xp: user.xp
+    }));
+
+    return res.json({ leaderboard: rankedList });
+  } catch (err: any) {
+    console.error("Leaderboard error:", err);
+    return res.status(500).json({ error: "Erro interno ao buscar leaderboard" });
+  }
+});
+
 // === SUPABASE AUTHENTICATION ENDPOINTS ===
 
 // Sign Up Route

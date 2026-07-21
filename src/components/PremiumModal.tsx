@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, X, Check, CreditCard, Flame, Award, 
   HelpCircle, Shield, Brain, BarChart3, Volume2, 
-  BookOpen, Trophy, Cloud, Zap, ArrowRight, Play, RefreshCw
+  BookOpen, Trophy, Cloud, Zap, ArrowRight, Play, RefreshCw,
+  Clock
 } from 'lucide-react';
 import { playTypeSound } from '../lib/sound';
 
@@ -24,6 +25,7 @@ interface PremiumModalProps {
   onSimulateTasks: () => void;
   onSimulateFunctions: () => void;
   onSimulateDays: () => void;
+  canClose?: boolean;
 }
 
 export default function PremiumModal({
@@ -37,7 +39,8 @@ export default function PremiumModal({
   onPaymentSuccess,
   onSimulateTasks,
   onSimulateFunctions,
-  onSimulateDays
+  onSimulateDays,
+  canClose = true
 }: PremiumModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,12 +55,10 @@ export default function PremiumModal({
   if (!isOpen) return null;
 
   // Milestone check values
-  const hasCompleted5Tasks = stats.totalTasksCompleted >= 5;
-  const hasUsedAllFunctions = usedFunctionsCount >= totalFunctionsCount;
   const hasBeen1Day = daysOfUse >= 1;
 
-  // Is eligible for premium upgrade (all conditions must be met!)
-  const isEligible = hasCompleted5Tasks && hasUsedAllFunctions && hasBeen1Day;
+  // Is eligible for premium upgrade (requires 1 day of use)
+  const isEligible = hasBeen1Day;
 
   const handleCheckout = async () => {
     playTypeSound();
@@ -67,7 +68,14 @@ export default function PremiumModal({
       ? 'https://buy.stripe.com/4gMbJ068f4zp7df1YT7Vm00'
       : 'https://buy.stripe.com/dRmbJ09kr4zpdBD0UP7Vm01';
 
-    window.location.href = checkoutUrl;
+    try {
+      window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error("Failed to open Stripe link", err);
+    }
+
+    // Use sandbox mode inside the iframe for a perfect preview experience
+    setShowSandbox(true);
   };
 
   const handleConfirmSandboxPayment = async () => {
@@ -123,18 +131,71 @@ export default function PremiumModal({
               <h4 className="text-sm font-black text-white uppercase tracking-tight">FocusOS Premium RPG</h4>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
-            title="Fechar"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {canClose && (
+            <button
+              onClick={onClose}
+              className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              title="Fechar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* SCROLLABLE BODY */}
         <div className="p-6 overflow-y-auto space-y-6 text-xs leading-relaxed text-zinc-400">
           
+          {/* PLAN SELECTOR & PRICING */}
+          <div className="space-y-3">
+            <h5 className="text-[10px] font-bold text-white uppercase tracking-wider font-mono">// ESCOLHA SUA JORNADA</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Plan A: Monthly */}
+              <button
+                onClick={() => { playTypeSound(); setSelectedPlan('monthly'); }}
+                className={`p-4 rounded-2xl border text-left flex flex-col justify-between cursor-pointer transition-all ${selectedPlan === 'monthly' ? 'bg-amber-950/20 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.05)]' : 'bg-zinc-900/40 border-zinc-900 hover:border-zinc-800'}`}
+              >
+                <div className="flex justify-between items-start w-full">
+                  <div>
+                    <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-wider block">Assinatura</span>
+                    <h6 className="font-black text-white text-sm mt-0.5">Plano Mensal Premium</h6>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${selectedPlan === 'monthly' ? 'border-amber-400 bg-amber-400' : 'border-zinc-750'}`}>
+                    {selectedPlan === 'monthly' && <Check className="w-3 h-3 text-zinc-950 stroke-[3]" />}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="text-xl font-black text-white font-mono">R$ 27,90</span>
+                  <span className="text-zinc-500 text-[10px] ml-1">/ por mês</span>
+                  <p className="text-[10px] text-zinc-500 mt-2 leading-snug">Cobrado mensalmente de forma automática. Cancele quando desejar sem custos ou multas.</p>
+                </div>
+              </button>
+
+              {/* Plan B: Anual */}
+              <button
+                onClick={() => { playTypeSound(); setSelectedPlan('lifetime'); }}
+                className={`p-4 rounded-2xl border text-left flex flex-col justify-between cursor-pointer transition-all relative overflow-hidden ${selectedPlan === 'lifetime' ? 'bg-amber-950/20 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.05)]' : 'bg-zinc-900/40 border-zinc-900 hover:border-zinc-800'}`}
+              >
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-600 to-amber-500 text-zinc-950 text-[8px] font-black px-2.5 py-1 uppercase rounded-bl-xl tracking-wider font-mono">
+                  Mais Popular ⭐
+                </div>
+                <div className="flex justify-between items-start w-full">
+                  <div>
+                    <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-wider block">Assinatura Anual</span>
+                    <h6 className="font-black text-white text-sm mt-0.5">Plano Anual Premium</h6>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${selectedPlan === 'lifetime' ? 'border-amber-400 bg-amber-400' : 'border-zinc-750'}`}>
+                    {selectedPlan === 'lifetime' && <Check className="w-3 h-3 text-zinc-950 stroke-[3]" />}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="text-xl font-black text-white font-mono">R$ 297,00</span>
+                  <span className="text-zinc-500 text-[10px] ml-1">/ por ano</span>
+                  <p className="text-[10px] text-zinc-500 mt-2 leading-snug">Acesso completo por um ano inteiro. Cobrado anualmente, cancele quando quiser.</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* ELIGIBILITY TRACKER CARDS */}
           <div className="bg-zinc-900/40 border border-zinc-900 p-4 rounded-2xl space-y-3.5">
             <div className="flex justify-between items-center">
@@ -144,43 +205,24 @@ export default function PremiumModal({
               </span>
             </div>
             <p className="text-[11px] text-zinc-400">
-              Para desbloquear as opções de compra, você deve cumprir <strong>todos os requisitos</strong> da guilda abaixo:
+              Para desbloquear as opções de compra, você deve cumprir o requisito da guilda abaixo:
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {/* Task milestone */}
-              <div className={`p-3 rounded-xl border flex flex-col justify-between ${hasCompleted5Tasks ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-zinc-900/40 border-zinc-900'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider font-mono">5 Missões</span>
-                  {hasCompleted5Tasks ? <Check className="w-4 h-4 text-amber-400 shrink-0" /> : <RefreshCw className="w-3.5 h-3.5 text-zinc-600 animate-spin" style={{ animationDuration: '4s' }} />}
-                </div>
-                <div className="mt-3">
-                  <span className="text-lg font-black font-mono block text-white">{stats.totalTasksCompleted} / 5</span>
-                  <span className="text-[10px] text-zinc-500 block">Tarefas completadas</span>
-                </div>
-              </div>
-
-              {/* Functions milestone */}
-              <div className={`p-3 rounded-xl border flex flex-col justify-between ${hasUsedAllFunctions ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-zinc-900/40 border-zinc-900'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Tudo Usado</span>
-                  {hasUsedAllFunctions ? <Check className="w-4 h-4 text-amber-400 shrink-0" /> : <RefreshCw className="w-3.5 h-3.5 text-zinc-600 animate-spin" style={{ animationDuration: '4s' }} />}
-                </div>
-                <div className="mt-3">
-                  <span className="text-lg font-black font-mono block text-white">{usedFunctionsCount} / {totalFunctionsCount}</span>
-                  <span className="text-[10px] text-zinc-500 block">Funções exploradas</span>
-                </div>
-              </div>
-
+            <div className="max-w-md mx-auto">
               {/* Days milestone */}
-              <div className={`p-3 rounded-xl border flex flex-col justify-between ${hasBeen1Day ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-zinc-900/40 border-zinc-900'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider font-mono">1 Dia</span>
-                  {hasBeen1Day ? <Check className="w-4 h-4 text-amber-400 shrink-0" /> : <RefreshCw className="w-3.5 h-3.5 text-zinc-600 animate-spin" style={{ animationDuration: '4s' }} />}
+              <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${hasBeen1Day ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-zinc-900/40 border-zinc-900'}`}>
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2.5 rounded-xl border ${hasBeen1Day ? 'bg-amber-950/40 border-amber-500/30 text-amber-400' : 'bg-zinc-900 text-zinc-600 border-zinc-850'}`}>
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider font-mono block">Tempo de Uso</span>
+                    <span className="text-xs text-zinc-500 block mt-0.5">1 Dia de jornada ativa no FocusOS</span>
+                  </div>
                 </div>
-                <div className="mt-3">
-                  <span className="text-lg font-black font-mono block text-white">{daysOfUse} / 1</span>
-                  <span className="text-[10px] text-zinc-500 block">Dia de jornada ativa</span>
+                <div className="text-right flex items-center gap-3">
+                  <span className="text-xl font-black font-mono text-white">{daysOfUse} / 1</span>
+                  {hasBeen1Day ? <Check className="w-5 h-5 text-amber-400 shrink-0" /> : <RefreshCw className="w-4 h-4 text-zinc-600 animate-spin shrink-0" style={{ animationDuration: '4s' }} />}
                 </div>
               </div>
             </div>
@@ -190,24 +232,12 @@ export default function PremiumModal({
           <div className="bg-zinc-900/20 border border-zinc-900/50 p-4 rounded-2xl border-dashed">
             <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest font-mono block mb-2">// PAINEL DE SIMULAÇÃO (PARA TESTES RÁPIDOS)</span>
             <p className="text-[11px] text-zinc-500 mb-3">
-              Não quer esperar ou preencher as missões agora? Clique em qualquer botão abaixo para forçar o cumprimento imediato dos requisitos do app!
+              Não quer esperar 1 dia de uso ativo? Clique no botão abaixo para simular a passagem de tempo e desbloquear a compra premium instantaneamente!
             </p>
             <div className="flex flex-wrap gap-2">
               <button 
-                onClick={() => { playTypeSound(); onSimulateTasks(); }}
-                className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-300 py-1.5 px-3 rounded-xl text-[10px] font-bold transition-all hover:border-amber-500/30 cursor-pointer active:scale-95"
-              >
-                ⚡ Simular 5 Tarefas Concluídas
-              </button>
-              <button 
-                onClick={() => { playTypeSound(); onSimulateFunctions(); }}
-                className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-300 py-1.5 px-3 rounded-xl text-[10px] font-bold transition-all hover:border-amber-500/30 cursor-pointer active:scale-95"
-              >
-                🎮 Simular Uso de Todas as Funções
-              </button>
-              <button 
                 onClick={() => { playTypeSound(); onSimulateDays(); }}
-                className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-300 py-1.5 px-3 rounded-xl text-[10px] font-bold transition-all hover:border-amber-500/30 cursor-pointer active:scale-95"
+                className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-amber-500/30 text-zinc-300 hover:text-white py-2 px-4 rounded-xl text-[10.5px] font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
               >
                 ⏳ Simular 1 Dia de Uso
               </button>
@@ -268,57 +298,6 @@ export default function PremiumModal({
             </div>
           </div>
 
-          {/* PLAN SELECTOR & PRICING */}
-          <div className="space-y-3">
-            <h5 className="text-[10px] font-bold text-white uppercase tracking-wider font-mono">// ESCOLHA SUA JORNADA</h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Plan A: Monthly */}
-              <button
-                onClick={() => { playTypeSound(); setSelectedPlan('monthly'); }}
-                className={`p-4 rounded-2xl border text-left flex flex-col justify-between cursor-pointer transition-all ${selectedPlan === 'monthly' ? 'bg-amber-950/20 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.05)]' : 'bg-zinc-900/40 border-zinc-900 hover:border-zinc-800'}`}
-              >
-                <div className="flex justify-between items-start w-full">
-                  <div>
-                    <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-wider block">Assinatura</span>
-                    <h6 className="font-black text-white text-sm mt-0.5">Plano Mensal Premium</h6>
-                  </div>
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${selectedPlan === 'monthly' ? 'border-amber-400 bg-amber-400' : 'border-zinc-750'}`}>
-                    {selectedPlan === 'monthly' && <Check className="w-3 h-3 text-zinc-950 stroke-[3]" />}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <span className="text-xl font-black text-white font-mono">R$ 27,90</span>
-                  <span className="text-zinc-500 text-[10px] ml-1">/ por mês</span>
-                  <p className="text-[10px] text-zinc-500 mt-2 leading-snug">Cobrado mensalmente de forma automática. Cancele quando desejar sem custos ou multas.</p>
-                </div>
-              </button>
-
-              {/* Plan B: Lifetime */}
-              <button
-                onClick={() => { playTypeSound(); setSelectedPlan('lifetime'); }}
-                className={`p-4 rounded-2xl border text-left flex flex-col justify-between cursor-pointer transition-all relative overflow-hidden ${selectedPlan === 'lifetime' ? 'bg-amber-950/20 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.05)]' : 'bg-zinc-900/40 border-zinc-900 hover:border-zinc-800'}`}
-              >
-                <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-600 to-amber-500 text-zinc-950 text-[8px] font-black px-2.5 py-1 uppercase rounded-bl-xl tracking-wider font-mono">
-                  Mais Popular ⭐
-                </div>
-                <div className="flex justify-between items-start w-full">
-                  <div>
-                    <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-wider block">Pagamento Único</span>
-                    <h6 className="font-black text-white text-sm mt-0.5">Plano Vitalício Premium</h6>
-                  </div>
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${selectedPlan === 'lifetime' ? 'border-amber-400 bg-amber-400' : 'border-zinc-750'}`}>
-                    {selectedPlan === 'lifetime' && <Check className="w-3 h-3 text-zinc-950 stroke-[3]" />}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <span className="text-xl font-black text-white font-mono">R$ 297,00</span>
-                  <span className="text-zinc-500 text-[10px] ml-1">/ pagamento único</span>
-                  <p className="text-[10px] text-zinc-500 mt-2 leading-snug">Pague uma única vez e tenha acesso irrestrito e permanente ao FocusOS para sempre.</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
           {error && (
             <div className="bg-rose-950/30 border border-rose-900/40 p-3.5 rounded-xl text-rose-400 font-semibold text-[11px] animate-fade-in">
               ❌ {error}
@@ -332,7 +311,7 @@ export default function PremiumModal({
           <div className="text-left">
             <span className="text-[10px] text-zinc-500 block leading-none font-mono">Plano selecionado:</span>
             <span className="text-xs font-black text-white uppercase mt-1 block">
-              {selectedPlan === 'monthly' ? 'Mensal (R$ 27,90/mês)' : 'Vitalício (R$ 297,00 único)'}
+              {selectedPlan === 'monthly' ? 'Mensal (R$ 27,90/mês)' : 'Anual (R$ 297,00/ano)'}
             </span>
           </div>
 

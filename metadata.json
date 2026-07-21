@@ -1,5 +1,5 @@
 {
-  "name": "Controle de Tarefas Gamificado",
+  "name": "FocusOS",
   "description": "Aplicativo de tarefas gamificado projetado para pessoas com dificuldade de foco, com sistema de níveis (até 150), conquistas e inteligência motivacional com IA.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

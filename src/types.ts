@@ -44,6 +44,7 @@ export interface UserStats {
   totalTasksCompleted: number;
   totalFocusMinutes: number;
   xpLogs: XPLog[];
+  nickname?: string;
 }
 
 export interface AICoachResponse {

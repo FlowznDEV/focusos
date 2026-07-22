@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Sparkles, X, Check, Brain, BarChart3, Volume2, 
-  Cloud, ExternalLink, ShieldCheck, Mail, ArrowLeft, Lock, Loader2, User
+  Cloud, ExternalLink, ShieldCheck, Mail, ArrowLeft, Lock, Loader2, User, Eye, EyeOff, AlertTriangle
 } from 'lucide-react';
 import { playTypeSound } from '../lib/sound';
 
@@ -18,7 +18,7 @@ interface PremiumModalProps {
   totalFunctionsCount: number;
   daysOfUse: number;
   completedTasksCount?: number;
-  onPaymentSuccess: (planType: string, buyerEmail?: string) => void;
+  onPaymentSuccess: (planType: string, buyerEmail?: string, token?: string) => void;
   onSimulateTasks?: () => void;
   onSimulateFunctions?: () => void;
   onSimulateDays?: () => void;
@@ -38,7 +38,11 @@ export default function PremiumModal({
   const [step, setStep] = useState<'plans' | 'email_confirmation'>('plans');
   const [buyerName, setBuyerName] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
+  const [buyerPassword, setBuyerPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [simulatingWebhook, setSimulatingWebhook] = useState(false);
+  const [simulationSuccess, setSimulationSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('monthly');
 
@@ -63,32 +67,89 @@ export default function PremiumModal({
   const handleGoToEmailStep = () => {
     playTypeSound();
     setError(null);
+    setSimulationSuccess(null);
     setStep('email_confirmation');
+  };
+
+  const handleSimulateKiwifyWebhook = async () => {
+    playTypeSound();
+    setError(null);
+    setSimulationSuccess(null);
+
+    const cleanEmail = buyerEmail.trim() || email || 'comprador@kiwify.com';
+    setSimulatingWebhook(true);
+
+    try {
+      const res = await fetch('/api/kiwify/simulate-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          name: buyerName.trim() || 'Comprador Kiwify Teste',
+          planType: selectedPlan
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSimulationSuccess(`Webhook do Kiwify simulado com sucesso para ${cleanEmail}! O e-mail foi registrado como PAGO.`);
+      } else {
+        throw new Error(data.error || 'Erro ao simular webhook do Kiwify.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao comunicar com o webhook.');
+    } finally {
+      setSimulatingWebhook(false);
+    }
   };
 
   const handleConfirmAccess = async () => {
     playTypeSound();
     setError(null);
+    setSimulationSuccess(null);
+
+    const cleanEmail = buyerEmail.trim();
+    if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.length < 5) {
+      setError('Por favor, informe o e-mail cadastrado no ato da compra para validar sua assinatura.');
+      return;
+    }
+
+    if (!buyerPassword || buyerPassword.trim().length < 4) {
+      setError('Por favor, defina uma senha para sua conta (mínimo 4 caracteres).');
+      return;
+    }
+
     setLoading(true);
 
-    const cleanEmail = buyerEmail.trim() || email || 'comprador@kiwify.com';
-    const cleanName = buyerName.trim();
-
     try {
-      await fetch('/api/user/premium-success', {
+      const response = await fetch('/api/kiwify/verify-purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: cleanEmail,
-          name: cleanName,
+          password: buyerPassword.trim(),
+          name: buyerName.trim(),
           planType: selectedPlan
         })
-      }).catch((err) => {
-        console.warn("Background premium log notice:", err);
       });
+
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        console.error("Failed to parse verification response:", parseErr);
+      }
+
+      if (response.ok && data?.success) {
+        onPaymentSuccess(selectedPlan, cleanEmail, data.user?.token);
+      } else {
+        const errorMsg = data?.error || 'Nenhum pagamento aprovado foi encontrado no Kiwify para este e-mail. Por favor, conclua o pagamento para liberar seu acesso.';
+        setError(errorMsg);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao verificar pagamento no Kiwify.');
     } finally {
       setLoading(false);
-      onPaymentSuccess(selectedPlan, cleanEmail);
     }
   };
 
@@ -248,18 +309,18 @@ export default function PremiumModal({
 
           </div>
         ) : (
-          /* STEP 2: NAME & EMAIL CONFIRMATION FORM */
-          <div className="p-4 space-y-3.5 text-xs text-zinc-400">
+          /* STEP 2: NAME, EMAIL & PASSWORD CONFIRMATION FORM */
+          <div className="p-4 space-y-3.5 text-xs text-zinc-400 overflow-y-auto max-h-[calc(92vh-140px)]">
             
-            <div className="bg-orange-950/30 border border-orange-500/30 p-3 rounded-2xl space-y-2">
+            <div className="bg-orange-950/30 border border-orange-500/30 p-3 rounded-2xl space-y-1.5">
               <div className="flex items-center space-x-2 text-orange-400">
                 <ShieldCheck className="w-4 h-4 shrink-0" />
                 <span className="font-mono font-bold text-[10px] uppercase tracking-wider">
-                  CONFIRMAÇÃO DE ACESSO
+                  VERIFICAÇÃO DE E-MAIL KIWIFY
                 </span>
               </div>
               <p className="text-[11px] text-zinc-200 leading-relaxed">
-                Informe o seu <strong>nome</strong> e <strong>e-mail</strong> para vincular a sua assinatura e liberar o acesso à sua conta instantaneamente.
+                Informe o <strong>mesmo e-mail cadastrado no checkout do Kiwify</strong>. O webhook do Kiwify verificará se há um pagamento aprovado associado a este e-mail para liberar o seu acesso automaticamente.
               </p>
             </div>
 
@@ -271,6 +332,7 @@ export default function PremiumModal({
             </div>
 
             <div className="space-y-3">
+              {/* NOME DO COMPRADOR */}
               <div className="space-y-1.5">
                 <label htmlFor="buyer-name-field" className="block text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
                   NOME DO COMPRADOR
@@ -282,16 +344,17 @@ export default function PremiumModal({
                     type="text"
                     value={buyerName}
                     onChange={(e) => setBuyerName(e.target.value)}
-                    placeholder="Digite seu nome completo"
+                    placeholder="Seu nome completo"
                     className="w-full bg-zinc-900 border border-orange-500/50 rounded-xl py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 font-mono transition-all"
                     autoFocus
                   />
                 </div>
               </div>
 
+              {/* E-MAIL DO COMPRADOR */}
               <div className="space-y-1.5">
                 <label htmlFor="buyer-email-field" className="block text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
-                  E-MAIL DO COMPRADOR
+                  E-MAIL DO CHECKOUT KIWIFY <span className="text-orange-400">*</span>
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-orange-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -300,8 +363,28 @@ export default function PremiumModal({
                     type="email"
                     value={buyerEmail}
                     onChange={(e) => setBuyerEmail(e.target.value)}
-                    placeholder="Digite seu e-mail cadastrado"
+                    placeholder="seu@email.com (o mesmo do Kiwify)"
                     className="w-full bg-zinc-900 border border-orange-500/50 rounded-xl py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 font-mono transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* SENHA PARA LOGIN */}
+              <div className="space-y-1.5">
+                <label htmlFor="buyer-password-field" className="block text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
+                  SENHA DE ACESSO AO APP <span className="text-orange-400">*</span>
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-orange-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="buyer-password-field"
+                    type={showPassword ? "text" : "password"}
+                    value={buyerPassword}
+                    onChange={(e) => setBuyerPassword(e.target.value)}
+                    placeholder="Crie uma senha de acesso"
+                    className="w-full bg-zinc-900 border border-orange-500/50 rounded-xl py-2.5 pl-10 pr-10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 font-mono transition-all"
+                    required
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -309,15 +392,63 @@ export default function PremiumModal({
                       }
                     }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
             </div>
 
+            {/* ERROR NOTIFICATION WITH DIRECT CHECKOUT CTA */}
             {error && (
-              <div className="bg-red-950/40 border border-red-900/60 p-2.5 rounded-xl text-red-300 font-semibold text-[10.5px]">
-                ❌ {error}
+              <div className="bg-red-950/70 border border-red-800 p-3 rounded-2xl space-y-2 text-red-200 animate-fadeIn">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] leading-relaxed font-semibold">
+                    {error}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenKiwifyLink}
+                  className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 px-3 rounded-xl text-[11px] transition-all flex items-center justify-center space-x-1.5 cursor-pointer mt-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-white" />
+                  <span>Realizar Pagamento Agora no Kiwify</span>
+                </button>
               </div>
             )}
+
+            {/* SIMULATION SUCCESS */}
+            {simulationSuccess && (
+              <div className="bg-emerald-950/60 border border-emerald-800 p-3 rounded-2xl text-emerald-300 font-mono text-[11px] flex items-start space-x-2">
+                <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span>{simulationSuccess}</span>
+              </div>
+            )}
+
+            {/* TESTER WEBHOOK SIMULATOR HELPER */}
+            <div className="pt-1 border-t border-zinc-900">
+              <button
+                type="button"
+                onClick={handleSimulateKiwifyWebhook}
+                disabled={simulatingWebhook}
+                className="text-[10px] font-mono text-zinc-500 hover:text-orange-400 underline flex items-center space-x-1 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {simulatingWebhook ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Simulando webhook Kiwify...</span>
+                  </>
+                ) : (
+                  <span>⚡ [Modo Teste] Simular Webhook Kiwify para este e-mail</span>
+                )}
+              </button>
+            </div>
 
           </div>
         )}

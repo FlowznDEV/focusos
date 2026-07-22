@@ -1555,7 +1555,7 @@ export default function App() {
         daysOfUse={getDaysOfUse()}
         completedTasksCount={completedTasksCount}
         canClose={!(isTrialEnded && !premium)}
-        onPaymentSuccess={(type, buyerEmail) => {
+        onPaymentSuccess={(type, buyerEmail, token) => {
           setPremium(true);
           setPlanType(type);
           setShowPremiumModal(false);
@@ -1565,6 +1565,11 @@ export default function App() {
           localStorage.setItem('focus_quest_show_welcome', 'true');
           if (buyerEmail) {
             localStorage.setItem('focus_quest_buyer_email', buyerEmail);
+            if (token) {
+              const sessionObj = { email: buyerEmail, token: token };
+              setSession(sessionObj);
+              localStorage.setItem('focus_quest_session', JSON.stringify(sessionObj));
+            }
           }
         }}
         onSimulateTasks={handleSimulateTasks}

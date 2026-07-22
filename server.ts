@@ -7,6 +7,7 @@ import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import Stripe from "stripe";
+import { processPaymentWebhook } from "./src/lib/api";
 
 dotenv.config();
 
@@ -286,6 +287,7 @@ function hashPassword(password: string): string {
 // Local File-based Database for bulletproof authentication and synchronization
 const USERS_FILE = path.join(process.cwd(), "local_db_users.json");
 const SYNC_FILE = path.join(process.cwd(), "local_db_sync.json");
+const KIWIFY_ORDERS_FILE = path.join(process.cwd(), "local_db_kiwify_orders.json");
 
 function readJsonFile(filePath: string): any {
   try {
@@ -1078,19 +1080,319 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
   }
 });
 
+// ==========================================
+// KIWIFY WEBHOOK & PURCHASE VERIFICATION
+// ==========================================
+
+// Helper function to handle Kiwify webhook payment logic
+async function processKiwifyPaymentWebhook(req: any, res: any) {
+  try {
+    const body = req.body || {};
+    const queryToken = req.query?.token || req.query?.signature || req.query?.secret;
+    const headerToken = req.headers["x-kiwify-signature"] || req.headers["x-kiwify-token"] || req.headers["authorization"] || req.headers["x-webhook-secret"];
+    const bodyToken = body.token || body.signature || body.secret || body.webhook_token;
+
+    const providedToken = queryToken || headerToken || bodyToken;
+
+    console.log("[KIWIFY WEBHOOK RECEIVED]:", JSON.stringify(body));
+
+    // Delegate processing & secret validation to src/lib/api.ts logic
+    const result = await processPaymentWebhook(body, providedToken);
+
+    if (result.status !== 200) {
+      return res.status(result.status).json(result.body);
+    }
+
+    // Also synchronize local DB order store
+    const email = body.Customer?.email || body.customer?.email || body.email || body.customer_email || body.Comprador?.email;
+    if (email) {
+      const cleanEmail = email.toLowerCase().trim();
+      const name = body.Customer?.full_name || body.customer?.name || body.name || body.Customer?.first_name || body.Comprador?.nome || "";
+      const rawStatus = (body.order_status || body.status || body.event || body.webhook_event_type || body.order_status_id || "paid").toString().toLowerCase();
+      const orderId = body.order_id || body.id || body.Subscription?.id || `kiwify_${Date.now()}`;
+      const productName = body.Product?.product_name || body.product_name || body.produto || "FocusOS Premium";
+      const planType = productName.toLowerCase().includes("mensal") ? "monthly" : "annual";
+
+      const orders = readJsonFile(KIWIFY_ORDERS_FILE);
+      const localUsers = readJsonFile(USERS_FILE);
+
+      const isApproved = ["paid", "approved", "aprovado", "order_approved", "completed", "active", "paid_out"].some(s => rawStatus.includes(s));
+
+      if (isApproved) {
+        orders[cleanEmail] = {
+          email: cleanEmail,
+          name: name,
+          status: "paid",
+          raw_status: rawStatus,
+          order_id: orderId,
+          product: productName,
+          planType: planType,
+          updated_at: new Date().toISOString()
+        };
+        writeJsonFile(KIWIFY_ORDERS_FILE, orders);
+
+        await upgradeUserToPremium(cleanEmail, planType);
+      } else {
+        orders[cleanEmail] = {
+          email: cleanEmail,
+          name: name,
+          status: rawStatus,
+          order_id: orderId,
+          updated_at: new Date().toISOString()
+        };
+        writeJsonFile(KIWIFY_ORDERS_FILE, orders);
+      }
+    }
+
+    return res.status(result.status).json(result.body);
+  } catch (error: any) {
+    console.error("[KIWIFY WEBHOOK EXCEPTION]:", error);
+    return res.status(500).json({ success: false, error: error.message || "Erro interno ao processar webhook de pagamento." });
+  }
+}
+
+// 1. Primary Endpoint requested: /api/webhook/payment
+app.post("/api/webhook/payment", processKiwifyPaymentWebhook);
+
+// 2. Alias Endpoint: /api/kiwify/webhook
+app.post("/api/kiwify/webhook", processKiwifyPaymentWebhook);
+
+// 3. Info & Configuration endpoint to retrieve Kiwify Webhook URL, API status and stats
+app.get("/api/kiwify/config", (req, res) => {
+  const host = req.headers.host || "localhost:3000";
+  const protocol = req.headers["x-forwarded-proto"] || "https";
+  const primaryWebhookUrl = `${protocol}://${host}/api/webhook/payment`;
+  const aliasWebhookUrl = `${protocol}://${host}/api/kiwify/webhook`;
+  const orders = readJsonFile(KIWIFY_ORDERS_FILE);
+
+  const isWebhookSecretConfigured = Boolean(process.env.KIWIFY_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET);
+  const isApiTokenConfigured = Boolean(process.env.KIWIFY_API_TOKEN);
+  const isAccountIdConfigured = Boolean(process.env.KIWIFY_ACCOUNT_ID);
+
+  res.json({
+    active: true,
+    webhook_urls: {
+      primary: primaryWebhookUrl,
+      alias: aliasWebhookUrl
+    },
+    config_status: {
+      webhook_secret_configured: isWebhookSecretConfigured,
+      api_token_configured: isApiTokenConfigured,
+      account_id_configured: isAccountIdConfigured
+    },
+    total_paid_orders: Object.keys(orders).filter(k => orders[k].status === "paid").length,
+    instructions: "Cadastre a URL 'primary' nas configurações de Webhook da Kiwify. Caso configure KIWIFY_WEBHOOK_SECRET em suas variáveis de ambiente, o servidor validará a assinatura de cada evento enviado."
+  });
+});
+
+app.get("/api/kiwify/webhook-info", (req, res) => {
+  const host = req.headers.host || "localhost:3000";
+  const protocol = req.headers["x-forwarded-proto"] || "https";
+  const primaryWebhookUrl = `${protocol}://${host}/api/webhook/payment`;
+  const aliasWebhookUrl = `${protocol}://${host}/api/kiwify/webhook`;
+  const orders = readJsonFile(KIWIFY_ORDERS_FILE);
+
+  res.json({
+    active: true,
+    primary_webhook_url: primaryWebhookUrl,
+    alias_webhook_url: aliasWebhookUrl,
+    total_paid_orders: Object.keys(orders).filter(k => orders[k].status === "paid").length,
+    registered_emails: Object.keys(orders)
+  });
+});
+
+// 4. Order Verification Node via Kiwify API or Local Store
+app.post("/api/kiwify/verify-order", async (req, res) => {
+  const { orderId, email } = req.body;
+  const apiToken = process.env.KIWIFY_API_TOKEN;
+  const cleanEmail = email ? email.toLowerCase().trim() : undefined;
+
+  const orders = readJsonFile(KIWIFY_ORDERS_FILE);
+
+  // If Kiwify API Token is configured, attempt direct fetch from Kiwify Public API
+  if (apiToken && orderId) {
+    try {
+      const apiRes = await fetch(`https://public-api.kiwify.com.br/v1/orders/${orderId}`, {
+        headers: {
+          "Authorization": `Bearer ${apiToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (apiRes.ok) {
+        const kiwifyData = await apiRes.json();
+        const status = (kiwifyData.order_status || kiwifyData.status || "").toLowerCase();
+        const isApproved = ["paid", "approved", "completed", "active"].some(s => status.includes(s));
+        
+        if (isApproved && cleanEmail) {
+          await upgradeUserToPremium(cleanEmail, "annual");
+        }
+
+        return res.json({
+          success: true,
+          source: "kiwify_api",
+          approved: isApproved,
+          order: kiwifyData
+        });
+      }
+    } catch (err: any) {
+      console.warn("[KIWIFY API FETCH WARNING]:", err.message);
+    }
+  }
+
+  // Fallback to internal orders store
+  if (cleanEmail && orders[cleanEmail]) {
+    const order = orders[cleanEmail];
+    const isApproved = order.status === "paid";
+    return res.json({
+      success: true,
+      source: "local_webhook_store",
+      approved: isApproved,
+      order: order
+    });
+  }
+
+  return res.status(404).json({
+    success: false,
+    message: "Pedido ou e-mail não localizado nos registros do Kiwify."
+  });
+});
+
+// 3. Simulate Kiwify webhook call (For testing and developer validation)
+app.post("/api/kiwify/simulate-webhook", async (req, res) => {
+  const { email, name, planType } = req.body;
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: "E-mail é obrigatório." });
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const orders = readJsonFile(KIWIFY_ORDERS_FILE);
+  const targetPlan = planType === "monthly" ? "monthly" : "annual";
+
+  orders[cleanEmail] = {
+    email: cleanEmail,
+    name: name || "Comprador Kiwify Teste",
+    status: "paid",
+    raw_status: "approved",
+    order_id: `sim_kiwify_${Date.now()}`,
+    product: targetPlan === "monthly" ? "FocusOS Mensal" : "FocusOS Anual/Vitalício",
+    planType: targetPlan,
+    updated_at: new Date().toISOString()
+  };
+  writeJsonFile(KIWIFY_ORDERS_FILE, orders);
+
+  // Upgrade user in local DB & Supabase
+  await upgradeUserToPremium(cleanEmail, targetPlan);
+
+  return res.json({
+    success: true,
+    message: `Simulação de Webhook Kiwify concluída com sucesso para ${cleanEmail}!`,
+    email: cleanEmail,
+    planType: targetPlan
+  });
+});
+
+// 4. Verification Endpoint called during Confirmation Step in App
+app.post("/api/kiwify/verify-purchase", async (req, res) => {
+  const { email, password, name, planType } = req.body;
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: "Por favor, informe o e-mail cadastrado no ato da compra." });
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const orders = readJsonFile(KIWIFY_ORDERS_FILE);
+  const localUsers = readJsonFile(USERS_FILE);
+
+  // Check if Kiwify webhook registered a paid order for this email or if user is already premium
+  const hasKiwifyPayment = orders[cleanEmail] && orders[cleanEmail].status === "paid";
+  const isUserPremium = localUsers[cleanEmail] && localUsers[cleanEmail].premium === true;
+
+  // If no payment is found for this email in Kiwify webhook or local DB:
+  if (!hasKiwifyPayment && !isUserPremium) {
+    return res.status(403).json({
+      success: false,
+      code: "PAYMENT_NOT_FOUND",
+      error: "E-mail não encontrado no sistema de pagamento do Kiwify. Nenhuma compra aprovada foi vinculada a este e-mail. Por favor, conclua o pagamento pelo Kiwify para ter seu acesso liberado."
+    });
+  }
+
+  // If user is verified, save account/password if provided
+  if (!localUsers[cleanEmail]) {
+    localUsers[cleanEmail] = {
+      email: cleanEmail,
+      created_at: new Date().toISOString()
+    };
+  }
+
+  if (password && password.trim()) {
+    localUsers[cleanEmail].password = hashPassword(password);
+  }
+  if (name && name.trim()) {
+    localUsers[cleanEmail].name = name.trim();
+  }
+
+  const targetPlan = planType || orders[cleanEmail]?.planType || "annual";
+  localUsers[cleanEmail].premium = true;
+  localUsers[cleanEmail].planType = targetPlan;
+  localUsers[cleanEmail].purchasedAt = new Date().toISOString();
+  writeJsonFile(USERS_FILE, localUsers);
+
+  // Upgrade via Supabase as well
+  await upgradeUserToPremium(cleanEmail, targetPlan);
+
+  const token = createSessionToken(cleanEmail);
+
+  return res.json({
+    success: true,
+    message: "Compra no Kiwify verificada! Acesso liberado.",
+    user: {
+      email: cleanEmail,
+      token: token,
+      premium: true,
+      planType: targetPlan
+    }
+  });
+});
+
 // Update user premium status in the local DB and Supabase via sandbox fallback
 app.post("/api/user/premium-success", async (req, res) => {
-  const { email, planType } = req.body;
+  const { email, planType, password, name } = req.body;
   if (!email) {
     return res.status(400).json({ error: "E-mail é obrigatório." });
   }
 
+  const cleanEmail = email.toLowerCase().trim();
+  const orders = readJsonFile(KIWIFY_ORDERS_FILE);
+  const localUsers = readJsonFile(USERS_FILE);
+
+  // Check if Kiwify payment exists
+  const hasKiwifyPayment = orders[cleanEmail] && orders[cleanEmail].status === "paid";
+  const isUserPremium = localUsers[cleanEmail] && localUsers[cleanEmail].premium === true;
+
+  if (!hasKiwifyPayment && !isUserPremium) {
+    return res.status(403).json({
+      success: false,
+      code: "PAYMENT_NOT_FOUND",
+      error: "E-mail não encontrado no sistema de pagamento do Kiwify. Nenhuma compra aprovada foi vinculada a este e-mail. Por favor, conclua o pagamento pelo Kiwify para liberar o acesso."
+    });
+  }
+
   try {
-    const updatedUser = await upgradeUserToPremium(email, planType);
+    if (password && password.trim()) {
+      if (!localUsers[cleanEmail]) {
+        localUsers[cleanEmail] = { email: cleanEmail, created_at: new Date().toISOString() };
+      }
+      localUsers[cleanEmail].password = hashPassword(password);
+      writeJsonFile(USERS_FILE, localUsers);
+    }
+
+    const updatedUser = await upgradeUserToPremium(cleanEmail, planType);
+    const token = createSessionToken(cleanEmail);
+
     return res.json({
       success: true,
       user: {
         email: updatedUser.email,
+        token: token,
         premium: true,
         planType: updatedUser.planType
       }

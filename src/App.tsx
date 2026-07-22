@@ -15,7 +15,10 @@ import LongTermGoals from './components/LongTermGoals';
 import OnboardingScreen from './components/OnboardingScreen';
 import PremiumModal from './components/PremiumModal';
 import PremiumWelcome from './components/PremiumWelcome';
-import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon } from 'lucide-react';
+import SettingsModal from './components/SettingsModal';
+import DeepWorkOverlay from './components/DeepWorkOverlay';
+import { AccentTheme } from './utils/theme';
+import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon, Sliders } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound, playLevelUpSound } from './lib/sound';
 
 const FOCUS_TIPS = [
@@ -98,6 +101,19 @@ export default function App() {
   const [showPremiumPrompt, setShowPremiumPrompt] = useState<boolean>(() => {
     return localStorage.getItem('focus_quest_premium_prompt_dismissed') !== 'true';
   });
+
+  // Settings & Theme customization states
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [showDeepWork, setShowDeepWork] = useState<boolean>(false);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [accentTheme, setAccentTheme] = useState<AccentTheme>(() => {
+    return (localStorage.getItem('focus_quest_accent_theme') as AccentTheme) || 'orange';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-accent-theme', accentTheme);
+    localStorage.setItem('focus_quest_accent_theme', accentTheme);
+  }, [accentTheme]);
 
   // App functions tracked for premium eligibility
   const [usedFunctions, setUsedFunctions] = useState<string[]>(() => {
@@ -731,6 +747,28 @@ export default function App() {
                 <span className="hidden sm:inline ml-1.5 font-medium">{zenMode ? "Modo Zen" : "Modo Zen"}</span>
               </button>
 
+              {/* Deep Work Mode Button */}
+              <button
+                id="toggle-deep-work-btn"
+                onClick={() => { playTypeSound(); setShowDeepWork(true); trackFunctionUsed('deep_work'); }}
+                className="flex items-center justify-center border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(99,102,241,0.25)]"
+                title="Ativar Modo Deep Work (Foco Sem Distrações)"
+              >
+                <Zap className="w-4 h-4 text-indigo-400 fill-indigo-400/30 animate-pulse" />
+                <span className="hidden sm:inline ml-1.5 font-mono uppercase tracking-wider text-[11px]">Deep Work</span>
+              </button>
+
+              {/* HUD Settings & Theme customization button */}
+              <button
+                id="open-settings-modal-btn"
+                onClick={() => { playTypeSound(); setShowSettingsModal(true); }}
+                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-orange-400 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm"
+                title="Configurações & Temas de Cores do HUD"
+              >
+                <Sliders className="w-4 h-4 text-orange-400" />
+                <span className="hidden sm:inline ml-1.5 font-medium">Ajustes & Temas</span>
+              </button>
+
               {/* Premium RPG Upgrade Button / Active Status crown */}
               {!premium ? (
                 <button
@@ -903,6 +941,15 @@ export default function App() {
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>Diário</span>
               </button>
+
+              <button
+                onClick={() => { setShowSettingsModal(true); playTypeSound(); }}
+                className="flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent transition-all duration-300 cursor-pointer ml-auto"
+                title="Configurações & Temas do HUD"
+              >
+                <Sliders className="w-3.5 h-3.5 text-orange-400" />
+                <span>Configurações do HUD</span>
+              </button>
             </div>
           )}
 
@@ -970,23 +1017,38 @@ export default function App() {
             <BookOpen className="w-5 h-5 mb-1" />
             <span className="text-[9px] uppercase tracking-wider">Diário</span>
           </button>
+
+          <button
+            onClick={() => { setShowSettingsModal(true); playTypeSound(); }}
+            className="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer text-zinc-500 font-medium hover:text-zinc-300"
+            title="Configurações & Temas"
+          >
+            <Sliders className="w-5 h-5 mb-1 text-orange-400" />
+            <span className="text-[9px] uppercase tracking-wider">Ajustes</span>
+          </button>
         </div>
       )}
 
       {/* Main Content Workspace Grid */}
       <main className="w-full flex-1 px-4 sm:px-6 md:px-8 lg:px-10 mt-4 pb-24 md:pb-12">
         {/* Active Premium purchase notification banner */}
-        {!premium && getDaysOfUse() >= 1 && showPremiumPrompt && (
-          <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-orange-950/80 via-zinc-900/90 to-orange-950/80 border border-orange-500/40 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(249,115,22,0.15)] relative overflow-hidden group animate-fade-in">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-400/50 to-transparent animate-pulse" />
+        {!premium && getDaysOfUse() >= 1 && showPremiumPrompt && !showDeepWork && (
+          <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-orange-950/90 via-amber-950/90 to-orange-950/90 border border-orange-500/50 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_25px_rgba(249,115,22,0.2)] relative overflow-hidden group animate-pop-in">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-400/60 to-transparent animate-pulse" />
             <div className="flex items-center space-x-3.5 text-left">
-              <div className="bg-orange-500/10 border border-orange-500/30 p-2.5 rounded-2xl text-orange-400 shrink-0">
-                <Sparkles className="w-5 h-5 animate-pulse text-orange-400" />
+              <div className="bg-orange-500/20 border border-orange-500/40 p-3 rounded-2xl text-orange-400 shrink-0">
+                <Sparkles className="w-6 h-6 animate-pulse text-orange-400" />
               </div>
               <div>
-                <span className="text-[9px] font-mono font-bold text-orange-400 uppercase tracking-widest block">// RECOMENDAÇÃO PREMIUM</span>
-                <h4 className="text-sm font-black text-white uppercase tracking-tight mt-0.5">Assinatura Premium FocusOS</h4>
-                <p className="text-xs text-zinc-400 mt-1">Desbloqueie o Treinador IA, gráficos avançados, Backup em Nuvem e rádios Lofi exclusivas.</p>
+                <span className="text-[9.5px] font-mono font-black text-orange-400 uppercase tracking-widest block">
+                  ⚠️ SEU PERÍODO DE TESTE GRÁTIS ACABOU!
+                </span>
+                <h4 className="text-sm font-black text-white uppercase tracking-tight mt-0.5">
+                  Teste Gratuito Finalizado
+                </h4>
+                <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
+                  Seu período de teste grátis expirou. Assine o FocusOS Premium para continuar evoluindo seu RPG, mantendo o Mentor IA, Backup em Nuvem e métricas avançadas sem restrições.
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
@@ -995,9 +1057,9 @@ export default function App() {
                   playTypeSound();
                   setShowPremiumModal(true);
                 }}
-                className="flex-1 md:flex-initial bg-orange-600 hover:bg-orange-500 text-white font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-lg shadow-orange-500/20"
+                className="flex-1 md:flex-initial bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-lg shadow-orange-500/30 font-mono"
               >
-                Ver Planos
+                Assinar Agora
               </button>
               <button
                 onClick={() => {
@@ -1499,6 +1561,46 @@ export default function App() {
         onSimulateTasks={handleSimulateTasks}
         onSimulateFunctions={handleSimulateFunctions}
         onSimulateDays={handleSimulateDays}
+      />
+
+      {/* Settings & Theme Customization Modal */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        accentTheme={accentTheme}
+        onSelectTheme={(theme) => {
+          setAccentTheme(theme);
+          playTypeSound();
+        }}
+        isNight={isNight}
+        onToggleNight={() => {
+          setIsNight(!isNight);
+          playTypeSound();
+        }}
+        soundEnabled={soundEnabled}
+        onToggleSound={handleToggleSound}
+        zenMode={zenMode}
+        onToggleZen={() => {
+          setZenMode(!zenMode);
+          playTypeSound();
+        }}
+        premium={premium}
+        daysOfUse={getDaysOfUse()}
+        onOpenPremiumModal={() => setShowPremiumModal(true)}
+        onResetJourney={() => setShowResetConfirm(true)}
+      />
+
+      {/* Deep Work Fullscreen Overlay */}
+      <DeepWorkOverlay
+        isOpen={showDeepWork}
+        onClose={() => setShowDeepWork(false)}
+        tasks={tasks}
+        activeTaskId={activeTaskId}
+        onSelectTask={(id) => setActiveTaskId(id)}
+        onCompleteTask={(id) => toggleTaskCompletion(id)}
+        onFocusComplete={(mins) => addFocusSession(mins)}
+        soundEnabled={soundEnabled}
+        onToggleSound={handleToggleSound}
       />
 
     </div>

@@ -28,6 +28,7 @@ export default function PremiumModal({
   isOpen,
   onClose,
   email,
+  daysOfUse = 0,
   onPaymentSuccess,
   canClose = true
 }: PremiumModalProps) {
@@ -100,8 +101,8 @@ export default function PremiumModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-zinc-950/95 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
-      <div className="bg-zinc-950 border border-orange-500/40 rounded-3xl max-w-lg w-full shadow-[0_0_60px_rgba(249,115,22,0.2)] relative flex flex-col mx-auto my-auto overflow-hidden animate-pop-in">
+    <div className="fixed inset-0 bg-zinc-950/95 backdrop-blur-md z-50 flex items-start justify-center p-3 sm:p-4 overflow-y-auto pt-4 sm:pt-8">
+      <div className="bg-zinc-950 border border-orange-500/40 rounded-3xl max-w-lg w-full shadow-[0_0_60px_rgba(249,115,22,0.2)] relative flex flex-col mx-auto my-0 overflow-hidden animate-pop-in max-h-[92vh]">
         
         {/* ORANGE TOP GLOW BAR */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-600 via-orange-400 to-orange-600" />
@@ -149,8 +150,25 @@ export default function PremiumModal({
 
         {/* BODY */}
         {step === 'plans' ? (
-          <div className="p-4 space-y-3.5 text-xs text-zinc-400">
+          <div className="p-4 space-y-3.5 text-xs text-zinc-400 overflow-y-auto">
             
+            {/* FREE TRIAL EXPIRED BANNER NOTICE */}
+            {daysOfUse >= 1 && (
+              <div className="bg-gradient-to-r from-orange-950/80 via-amber-950/90 to-orange-950/80 border border-orange-500/50 p-3.5 rounded-2xl text-white flex items-center space-x-3 shadow-lg shadow-orange-500/10 animate-fade-in">
+                <div className="bg-orange-500/20 border border-orange-500/30 p-2 rounded-xl text-orange-400 shrink-0">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <span className="text-[9.5px] font-mono font-black text-orange-400 uppercase tracking-widest block">
+                    ⚠️ O SEU PERÍODO DE TESTE GRÁTIS ACABOU!
+                  </span>
+                  <p className="text-[11px] text-zinc-200 mt-0.5 leading-snug font-medium">
+                    Seu período de teste grátis expirou. Escolha um plano abaixo para liberar acesso ilimitado a todas as ferramentas do HUD!
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* PLAN SELECTOR */}
             <div className="space-y-1.5">
               <h5 className="text-[10px] font-bold text-white uppercase tracking-wider font-mono">// PLANOS DISPONÍVEIS</h5>

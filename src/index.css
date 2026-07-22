@@ -7,6 +7,36 @@
 }
 
 /* Custom styles for gamified experience */
+:root, [data-accent-theme="orange"] {
+  --hud-accent: #f97316;
+  --hud-accent-glow: rgba(249, 115, 22, 0.25);
+  --hud-accent-border: rgba(249, 115, 22, 0.35);
+}
+
+[data-accent-theme="blue"] {
+  --hud-accent: #06b6d4;
+  --hud-accent-glow: rgba(6, 182, 212, 0.25);
+  --hud-accent-border: rgba(6, 182, 212, 0.35);
+}
+
+[data-accent-theme="green"] {
+  --hud-accent: #10b981;
+  --hud-accent-glow: rgba(16, 185, 129, 0.25);
+  --hud-accent-border: rgba(16, 185, 129, 0.35);
+}
+
+[data-accent-theme="violet"] {
+  --hud-accent: #8b5cf6;
+  --hud-accent-glow: rgba(139, 92, 246, 0.25);
+  --hud-accent-border: rgba(139, 92, 246, 0.35);
+}
+
+[data-accent-theme="rose"] {
+  --hud-accent: #ec4899;
+  --hud-accent-glow: rgba(236, 72, 153, 0.25);
+  --hud-accent-border: rgba(236, 72, 153, 0.35);
+}
+
 @keyframes pulse-soft {
   0%, 100% {
     opacity: 1;

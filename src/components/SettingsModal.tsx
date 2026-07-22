@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Palette, Volume2, VolumeX, Moon, Sun, Shield, Sparkles, Check, RefreshCw, Leaf, Sliders } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { X, Palette, Volume2, VolumeX, Moon, Sun, Shield, Sparkles, Check, RefreshCw, Leaf, Sliders, Download, Upload, Database, HardDrive, Clock, CheckCircle2, FileJson } from 'lucide-react';
 import { AccentTheme, THEME_OPTIONS } from '../utils/theme';
 
 interface SettingsModalProps {
@@ -18,6 +18,9 @@ interface SettingsModalProps {
   completedTasksCount?: number;
   onOpenPremiumModal: () => void;
   onResetJourney: () => void;
+  onExportBackup?: () => void;
+  onRestoreBackupFile?: (file: File) => void;
+  lastAutoBackupTimestamp?: number | null;
 }
 
 export default function SettingsModal({
@@ -36,8 +39,33 @@ export default function SettingsModal({
   completedTasksCount = 0,
   onOpenPremiumModal,
   onResetJourney,
+  onExportBackup,
+  onRestoreBackupFile,
+  lastAutoBackupTimestamp,
 }: SettingsModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+
   if (!isOpen) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (onRestoreBackupFile) {
+        onRestoreBackupFile(file);
+        setRestoreMessage(`Arquivo "${file.name}" carregado para restauração!`);
+        setTimeout(() => setRestoreMessage(null), 4000);
+      }
+    }
+    // reset input
+    if (e.target) e.target.value = '';
+  };
+
+  const formatBackupDate = (ts?: number | null) => {
+    if (!ts) return 'Pendente (Será gerado a cada 24h)';
+    const d = new Date(ts);
+    return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  };
 
   return (
     <div className="fixed inset-0 bg-zinc-950/90 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
@@ -250,7 +278,81 @@ export default function SettingsModal({
             </div>
           </div>
 
-          {/* SECTION 4: RESET JOURNEY */}
+          {/* SECTION 4: BACKUP AUTOMÁTICO 24H E RESTAURAÇÃO */}
+          <div className="border-t border-zinc-900 pt-5">
+            <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider font-mono mb-3.5 flex items-center space-x-2">
+              <Database className="w-4 h-4 text-cyan-400" />
+              <span>Backup do Sistema & Restauração</span>
+            </h4>
+
+            <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-2xl space-y-3.5">
+              {/* Auto backup status */}
+              <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 rounded-xl">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white block">
+                      Backup Automático (A cada 24 horas)
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono block">
+                      Último download: <span className="text-cyan-300 font-semibold">{formatBackupDate(lastAutoBackupTimestamp)}</span>
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[9px] font-mono font-bold uppercase tracking-wider shrink-0">
+                  Ativo 24h
+                </span>
+              </div>
+
+              {/* Restore message feedback */}
+              {restoreMessage && (
+                <div className="bg-emerald-950/40 border border-emerald-500/40 p-2.5 rounded-xl text-[11px] text-emerald-300 font-mono flex items-center space-x-2 animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{restoreMessage}</span>
+                </div>
+              )}
+
+              {/* Action Buttons: Export Manual & Restore File */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
+                {/* Manual Export Download Button */}
+                <button
+                  type="button"
+                  onClick={() => onExportBackup && onExportBackup()}
+                  className="bg-zinc-850 hover:bg-zinc-800 border border-zinc-700 hover:border-cyan-500/50 text-white font-bold text-[10.5px] p-2.5 rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer group"
+                >
+                  <Download className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                  <span>Exportar JSON Agora</span>
+                </button>
+
+                {/* Manual Restore Upload Button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/40 hover:border-cyan-400 text-cyan-200 font-bold text-[10.5px] p-2.5 rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer group"
+                >
+                  <Upload className="w-3.5 h-3.5 text-cyan-400 group-hover:-translate-y-0.5 transition-transform" />
+                  <span>Restaurar de JSON</span>
+                </button>
+
+                {/* Hidden File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
+
+              <p className="text-[10px] text-zinc-500 font-mono leading-relaxed pt-1">
+                💡 O sistema exporta e baixa automaticamente uma cópia em JSON de todas as suas tarefas, níveis, conquistas e diário a cada 24h. Em caso de troca de dispositivo ou limpeza de navegador, use "Restaurar de JSON" para recuperar 100% do seu progresso.
+              </p>
+            </div>
+          </div>
+
+          {/* SECTION 5: RESET JOURNEY */}
           <div className="border-t border-zinc-900 pt-5 pb-2">
             <div className="flex items-center justify-between">
               <div>

@@ -621,6 +621,43 @@ export function useGamifiedState() {
     addXPDirectly(50, 'Recomeço da jornada!');
   }, []);
 
+  // Restore data from JSON backup
+  const restoreAllData = useCallback((data: {
+    tasks?: Task[];
+    achievements?: Achievement[];
+    stats?: UserStats;
+    journalEntries?: JournalEntry[];
+    longTermGoals?: LongTermGoal[];
+  }) => {
+    if (data.tasks) {
+      setTasks(data.tasks);
+      localStorage.setItem('focus_quest_tasks', JSON.stringify(data.tasks));
+    }
+    if (data.achievements) {
+      setAchievements(data.achievements);
+      localStorage.setItem('focus_quest_achievements', JSON.stringify(data.achievements));
+    }
+    if (data.stats) {
+      setStats(data.stats);
+      localStorage.setItem('focus_quest_stats', JSON.stringify(data.stats));
+    }
+    if (data.journalEntries) {
+      setJournalEntries(data.journalEntries);
+      localStorage.setItem('focus_quest_journal', JSON.stringify(data.journalEntries));
+    }
+    if (data.longTermGoals) {
+      setLongTermGoals(data.longTermGoals);
+      localStorage.setItem('focus_quest_long_term_goals', JSON.stringify(data.longTermGoals));
+    }
+    playLevelUpSound();
+    setActiveNotification({
+      id: 'restore_' + Date.now(),
+      type: 'achievement',
+      title: 'Progresso Restaurado!',
+      message: 'Seus dados foram recuperados com sucesso do arquivo de backup.',
+    });
+  }, []);
+
   return {
     tasks,
     achievements,
@@ -641,6 +678,7 @@ export function useGamifiedState() {
     activeNotification,
     clearNotification,
     triggerConfetti,
-    resetAllData
+    resetAllData,
+    restoreAllData
   };
 }

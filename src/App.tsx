@@ -20,6 +20,7 @@ import DeepWorkOverlay from './components/DeepWorkOverlay';
 import { AccentTheme } from './utils/theme';
 import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon, Sliders } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound, playLevelUpSound } from './lib/sound';
+import { createBackupObject, triggerJsonDownload, parseAndValidateBackup, isAutoBackupDue } from './lib/backup';
 
 const FOCUS_TIPS = [
   "A técnica Pomodoro (25 minutos de foco e 5 de descanso) ajuda a manter a mente fresca.",
@@ -55,7 +56,8 @@ export default function App() {
     activeNotification,
     clearNotification,
     triggerConfetti,
-    resetAllData
+    resetAllData,
+    restoreAllData
   } = useGamifiedState();
 
   // Session & Authentication states - Local Checkpoint Auto-Save
@@ -152,6 +154,12 @@ export default function App() {
   const [simulatedDays, setSimulatedDays] = useState<number>(() => {
     const saved = localStorage.getItem('focus_quest_simulated_days');
     return saved ? parseInt(saved, 10) : 0;
+  });
+
+  // 24-Hour Automatic JSON Backup & Progress Restore State
+  const [lastAutoBackupTimestamp, setLastAutoBackupTimestamp] = useState<number | null>(() => {
+    const saved = localStorage.getItem('focus_quest_last_auto_backup');
+    return saved ? parseInt(saved, 10) : null;
   });
 
   const getDaysOfUse = () => {
@@ -301,6 +309,105 @@ export default function App() {
   const [currentTip, setCurrentTip] = useState('');
   const [loadingModalTip, setLoadingModalTip] = useState(false);
   const [zenMode, setZenMode] = useState(false);
+
+  // 24-Hour Automatic JSON Backup & Progress Restore Handlers
+  const handleExportBackup = useCallback((isAuto: boolean = false) => {
+    const backupObj = createBackupObject(
+      tasks,
+      achievements,
+      stats,
+      journalEntries,
+      longTermGoals,
+      session,
+      {
+        accentTheme,
+        nightMode: isNight,
+        soundEnabled,
+        zenMode,
+        premium,
+        planType,
+        firstUsedAt,
+        simulatedDays,
+        usedFunctions
+      }
+    );
+    triggerJsonDownload(backupObj, isAuto);
+
+    const now = Date.now();
+    setLastAutoBackupTimestamp(now);
+    localStorage.setItem('focus_quest_last_auto_backup', now.toString());
+  }, [tasks, achievements, stats, journalEntries, longTermGoals, session, accentTheme, isNight, soundEnabled, zenMode, premium, planType, firstUsedAt, simulatedDays, usedFunctions]);
+
+  // Effect to automatically export backup JSON every 24 hours
+  useEffect(() => {
+    const checkAndRunAutoBackup = () => {
+      if (isAutoBackupDue(lastAutoBackupTimestamp)) {
+        console.log("[AUTO BACKUP 24H] Executando exportação automática de 24h...");
+        handleExportBackup(true);
+      }
+    };
+
+    // Check on mount
+    checkAndRunAutoBackup();
+
+    // Periodic check every 30 minutes while tab is open
+    const interval = setInterval(checkAndRunAutoBackup, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [lastAutoBackupTimestamp, handleExportBackup]);
+
+  // Function to manually restore full progress from a user-provided JSON file
+  const handleRestoreBackupFile = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      if (!content) return;
+
+      const result = parseAndValidateBackup(content);
+      if (!result.success || !result.data) {
+        alert(result.error || "Erro ao ler o arquivo de backup selecionado.");
+        return;
+      }
+
+      const backup = result.data;
+      const data = backup.data;
+
+      // 1. Restore RPG & task state
+      restoreAllData({
+        tasks: data.tasks,
+        achievements: data.achievements,
+        stats: data.stats,
+        journalEntries: data.journalEntries,
+        longTermGoals: data.longTermGoals
+      });
+
+      // 2. Restore preferences if present
+      if (data.preferences) {
+        if (data.preferences.accentTheme) setAccentTheme(data.preferences.accentTheme as AccentTheme);
+        if (typeof data.preferences.nightMode === 'boolean') setIsNight(data.preferences.nightMode);
+        if (typeof data.preferences.soundEnabled === 'boolean') {
+          setSoundEnabled(data.preferences.soundEnabled);
+          setGlobalSoundEnabled(data.preferences.soundEnabled);
+        }
+        if (typeof data.preferences.zenMode === 'boolean') setZenMode(data.preferences.zenMode);
+        if (typeof data.preferences.premium === 'boolean') {
+          setPremium(data.preferences.premium);
+          localStorage.setItem('focus_quest_premium', data.preferences.premium.toString());
+        }
+        if (data.preferences.planType) {
+          setPlanType(data.preferences.planType);
+          localStorage.setItem('focus_quest_plan_type', data.preferences.planType);
+        }
+        if (data.preferences.simulatedDays) setSimulatedDays(data.preferences.simulatedDays);
+      }
+
+      // 3. Restore session
+      if (data.session) {
+        setSession(data.session);
+        localStorage.setItem('focus_quest_user_session', JSON.stringify(data.session));
+      }
+    };
+    reader.readAsText(file);
+  }, [restoreAllData]);
 
   const fetchModalTip = async () => {
     setLoadingModalTip(true);
@@ -1603,6 +1710,9 @@ export default function App() {
         completedTasksCount={completedTasksCount}
         onOpenPremiumModal={() => setShowPremiumModal(true)}
         onResetJourney={() => setShowResetConfirm(true)}
+        onExportBackup={() => handleExportBackup(false)}
+        onRestoreBackupFile={handleRestoreBackupFile}
+        lastAutoBackupTimestamp={lastAutoBackupTimestamp}
       />
 
       {/* Deep Work Fullscreen Overlay */}

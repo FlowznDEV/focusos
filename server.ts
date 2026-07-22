@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import Stripe from "stripe";
 import { processPaymentWebhook } from "./src/lib/api";
+import { handleKiwifyPaymentWebhook } from "./src/api/webhook/payment";
 
 dotenv.config();
 
@@ -1152,10 +1153,10 @@ async function processKiwifyPaymentWebhook(req: any, res: any) {
 }
 
 // 1. Primary Endpoint requested: /api/webhook/payment
-app.post("/api/webhook/payment", processKiwifyPaymentWebhook);
+app.post("/api/webhook/payment", handleKiwifyPaymentWebhook);
 
 // 2. Alias Endpoint: /api/kiwify/webhook
-app.post("/api/kiwify/webhook", processKiwifyPaymentWebhook);
+app.post("/api/kiwify/webhook", handleKiwifyPaymentWebhook);
 
 // 3. Info & Configuration endpoint to retrieve Kiwify Webhook URL, API status and stats
 app.get("/api/kiwify/config", (req, res) => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash, Folder, AlertCircle, Play, CheckCircle2, Circle, Sparkles, Filter, Check, Search, X } from 'lucide-react';
+import { Plus, Trash, Folder, AlertCircle, Play, CheckCircle2, Circle, Sparkles, Filter, Check, Search, X, Tag } from 'lucide-react';
 import { Task, Difficulty, TaskCategory, Priority } from '../types';
 import { playTypeSound } from '../lib/sound';
 
@@ -12,12 +12,13 @@ interface TaskListProps {
   onSelectTask: (task: Task | null) => void;
 }
 
-const CATEGORIES: { value: TaskCategory; label: string; icon: string; color: string; bg: string }[] = [
-  { value: 'work', label: 'Trabalho', icon: '💼', color: 'text-indigo-400 border-indigo-900/40', bg: 'bg-indigo-950/60 border-indigo-900/50 text-indigo-300' },
-  { value: 'study', label: 'Estudo', icon: '📚', color: 'text-pink-400 border-pink-900/40', bg: 'bg-pink-950/60 border-pink-900/50 text-pink-300' },
-  { value: 'health', label: 'Saúde', icon: '🍏', color: 'text-emerald-400 border-emerald-900/40', bg: 'bg-emerald-950/60 border-emerald-900/50 text-emerald-300' },
-  { value: 'organization', label: 'Rotina', icon: '🧹', color: 'text-amber-400 border-amber-900/40', bg: 'bg-amber-950/60 border-amber-900/50 text-amber-300' },
-  { value: 'creative', label: 'Criativo', icon: '🎨', color: 'text-cyan-400 border-cyan-900/40', bg: 'bg-cyan-950/60 border-cyan-900/50 text-cyan-300' }
+const CATEGORIES: { value: TaskCategory; label: string; icon: string; color: string; bg: string; activeBg: string }[] = [
+  { value: 'work', label: 'Trabalho', icon: '💼', color: 'text-indigo-400', bg: 'bg-indigo-950/70 border border-indigo-500/40 text-indigo-300', activeBg: 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_12px_rgba(79,70,229,0.3)]' },
+  { value: 'personal', label: 'Pessoal', icon: '🏠', color: 'text-purple-400', bg: 'bg-purple-950/70 border border-purple-500/40 text-purple-300', activeBg: 'bg-purple-600 border-purple-500 text-white shadow-[0_0_12px_rgba(147,51,234,0.3)]' },
+  { value: 'study', label: 'Estudo', icon: '📚', color: 'text-pink-400', bg: 'bg-pink-950/70 border border-pink-500/40 text-pink-300', activeBg: 'bg-pink-600 border-pink-500 text-white shadow-[0_0_12px_rgba(219,39,119,0.3)]' },
+  { value: 'health', label: 'Saúde', icon: '🍏', color: 'text-emerald-400', bg: 'bg-emerald-950/70 border border-emerald-500/40 text-emerald-300', activeBg: 'bg-emerald-600 border-emerald-500 text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]' },
+  { value: 'organization', label: 'Rotina', icon: '🧹', color: 'text-amber-400', bg: 'bg-amber-950/70 border border-amber-500/40 text-amber-300', activeBg: 'bg-amber-600 border-amber-500 text-white shadow-[0_0_12px_rgba(217,119,6,0.3)]' },
+  { value: 'creative', label: 'Criativo', icon: '🎨', color: 'text-cyan-400', bg: 'bg-cyan-950/70 border border-cyan-500/40 text-cyan-300', activeBg: 'bg-cyan-600 border-cyan-500 text-white shadow-[0_0_12px_rgba(8,145,178,0.3)]' }
 ];
 
 const DIFFICULTY_MAP: Record<Difficulty, { label: string; xp: number; color: string; bg: string }> = {
@@ -43,6 +44,7 @@ export default function TaskList({
   const [isAdding, setIsAdding] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<TaskCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Form states
@@ -77,6 +79,8 @@ export default function TaskList({
     if (filter === 'completed' && !t.completed) return false;
 
     if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
+
+    if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
 
     return true;
   });
@@ -144,7 +148,7 @@ export default function TaskList({
                       key={cat.value}
                       type="button"
                       onClick={() => setCategory(cat.value)}
-                      className={`py-1.5 px-3 rounded-lg text-xs font-semibold border transition-all flex items-center space-x-1 ${category === cat.value ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-zinc-900 hover:bg-zinc-850 border-zinc-800 text-zinc-400'}`}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-semibold border transition-all flex items-center space-x-1 cursor-pointer ${category === cat.value ? cat.activeBg : 'bg-zinc-900/80 hover:bg-zinc-800 border-zinc-800 text-zinc-400'}`}
                     >
                       <span>{cat.icon}</span>
                       <span>{cat.label}</span>
@@ -283,7 +287,7 @@ export default function TaskList({
               id="prio-filter-all-btn"
               type="button"
               onClick={() => setPriorityFilter('all')}
-              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all ${priorityFilter === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${priorityFilter === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               Tudo
             </button>
@@ -291,7 +295,7 @@ export default function TaskList({
               id="prio-filter-low-btn"
               type="button"
               onClick={() => setPriorityFilter('low')}
-              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all ${priorityFilter === 'low' ? 'bg-zinc-800/40 text-zinc-300 border border-zinc-750' : 'text-zinc-500 hover:text-zinc-400'}`}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${priorityFilter === 'low' ? 'bg-zinc-800/40 text-zinc-300 border border-zinc-750' : 'text-zinc-500 hover:text-zinc-400'}`}
             >
               Baixa
             </button>
@@ -299,7 +303,7 @@ export default function TaskList({
               id="prio-filter-medium-btn"
               type="button"
               onClick={() => setPriorityFilter('medium')}
-              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all ${priorityFilter === 'medium' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/40' : 'text-zinc-500 hover:text-amber-500/70'}`}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${priorityFilter === 'medium' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/40' : 'text-zinc-500 hover:text-amber-500/70'}`}
             >
               Média
             </button>
@@ -307,10 +311,51 @@ export default function TaskList({
               id="prio-filter-high-btn"
               type="button"
               onClick={() => setPriorityFilter('high')}
-              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all ${priorityFilter === 'high' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/40' : 'text-zinc-500 hover:text-rose-500/70'}`}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${priorityFilter === 'high' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/40' : 'text-zinc-500 hover:text-rose-500/70'}`}
             >
               Alta
             </button>
+          </div>
+
+          {/* Category Tag filter chips */}
+          <div className="flex items-center space-x-1 bg-zinc-900/80 border border-zinc-800 p-1 rounded-xl w-fit shrink-0 flex-wrap gap-y-1">
+            <span className="text-[10px] text-zinc-500 font-bold px-2 uppercase tracking-wider font-mono flex items-center space-x-1">
+              <Tag className="w-3 h-3 text-indigo-400" />
+              <span>Tag:</span>
+            </span>
+            <button
+              id="cat-filter-all-btn"
+              type="button"
+              onClick={() => {
+                setCategoryFilter('all');
+                playTypeSound();
+              }}
+              className={`py-1 px-2.5 text-[10px] font-semibold rounded-lg transition-all cursor-pointer ${categoryFilter === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Todas
+            </button>
+            {CATEGORIES.map((cat) => {
+              const isSelected = categoryFilter === cat.value;
+              return (
+                <button
+                  id={`cat-filter-${cat.value}-btn`}
+                  key={cat.value}
+                  type="button"
+                  onClick={() => {
+                    setCategoryFilter(isSelected ? 'all' : cat.value);
+                    playTypeSound();
+                  }}
+                  className={`py-1 px-2 text-[10px] font-semibold rounded-lg transition-all cursor-pointer flex items-center space-x-1 border ${
+                    isSelected
+                      ? cat.activeBg
+                      : 'border-transparent text-zinc-400 hover:text-white hover:bg-zinc-850/60'
+                  }`}
+                >
+                  <span className="text-[10px]">{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -410,8 +455,9 @@ export default function TaskList({
 
                     {/* Metadata tags (Category + Difficulty) */}
                     <div className="flex items-center space-x-2 mt-1.5 flex-wrap gap-y-1">
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${catInfo?.bg || 'bg-zinc-900 text-zinc-400 border border-zinc-800'}`}>
-                        {catInfo?.label || 'Geral'}
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1 ${catInfo?.bg || 'bg-zinc-900 text-zinc-400 border border-zinc-800'}`}>
+                        <span>{catInfo?.icon}</span>
+                        <span>{catInfo?.label || 'Geral'}</span>
                       </span>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${diffInfo.bg} ${diffInfo.color}`}>
                         {diffInfo.label}

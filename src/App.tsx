@@ -322,7 +322,6 @@ export default function App() {
         setCurrentTip(FOCUS_TIPS[randomIndex]);
       }
     } catch (err) {
-      console.error("Error fetching modal tip:", err);
       const randomIndex = Math.floor(Math.random() * FOCUS_TIPS.length);
       setCurrentTip(FOCUS_TIPS[randomIndex]);
     } finally {

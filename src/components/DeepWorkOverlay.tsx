@@ -237,10 +237,129 @@ export default function DeepWorkOverlay({
       </div>
 
       {/* CENTER WORKSPACE CORE */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center max-w-2xl w-full mx-auto text-center my-auto py-4">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center max-w-2xl w-full mx-auto text-center my-auto py-2 overflow-y-auto">
         
+        {/* LARGE COUNTDOWN VISUAL TIMER */}
+        <div className="relative flex items-center justify-center my-2 shrink-0">
+          <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-full border-4 border-zinc-900 flex items-center justify-center relative shadow-[0_0_50px_rgba(99,102,241,0.15)]">
+            <svg className="absolute -rotate-90 top-0 left-0 w-full h-full">
+              <circle
+                cx="50%"
+                cy="50%"
+                r="45%"
+                fill="transparent"
+                stroke="url(#deepGlow)"
+                strokeWidth="6"
+                strokeDasharray="750"
+                strokeDashoffset={750 - (750 * progressPercent) / 100}
+                strokeLinecap="round"
+                className="transition-all duration-1000 ease-out"
+              />
+              <defs>
+                <linearGradient id="deepGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="50%" stopColor="#a855f7" />
+                  <stop offset="100%" stopColor="#ec4899" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            <div className="text-center z-10">
+              <span className="block text-4xl sm:text-5xl font-mono font-black text-white tracking-tight drop-shadow-md">
+                {formatTime(secondsLeft)}
+              </span>
+              <span className="text-[11px] font-mono font-bold text-indigo-400 uppercase tracking-widest mt-1 block">
+                {preset === 5 ? 'PAUSA REGENERATIVA' : `SESSÃO +${preset * 3} XP`}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* PRESET PICKERS */}
+        <div className="flex space-x-2 p-1 bg-zinc-950/90 border border-zinc-800 rounded-2xl mt-4 w-full max-w-md shrink-0">
+          <button
+            disabled={isActive}
+            onClick={() => setPreset(15)}
+            className={`flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+              preset === 15 ? 'bg-indigo-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-50'
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5" />
+            <span>15 Min</span>
+          </button>
+
+          <button
+            disabled={isActive}
+            onClick={() => setPreset(25)}
+            className={`flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+              preset === 25 ? 'bg-indigo-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-50'
+            }`}
+          >
+            <Brain className="w-3.5 h-3.5" />
+            <span>25 Min</span>
+          </button>
+
+          <button
+            disabled={isActive}
+            onClick={() => setPreset(50)}
+            className={`flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+              preset === 50 ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-50'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>50 Min</span>
+          </button>
+
+          <button
+            disabled={isActive}
+            onClick={() => setPreset(5)}
+            className={`flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+              preset === 5 ? 'bg-emerald-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-50'
+            }`}
+          >
+            <Coffee className="w-3.5 h-3.5" />
+            <span>5m Pausa</span>
+          </button>
+        </div>
+
+        {/* TIMER CONTROLS */}
+        <div className="flex items-center space-x-4 mt-4 mb-6 shrink-0">
+          <button
+            onClick={() => {
+              if (isActive) playCancelSound();
+              setIsActive(false);
+              setSecondsLeft(preset * 60);
+            }}
+            className="p-3 rounded-2xl border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-900 active:scale-95 transition-all cursor-pointer"
+            title="Resetar tempo"
+          >
+            <RotateCcw className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={() => setIsActive(!isActive)}
+            className={`py-3 px-8 rounded-2xl font-mono font-black text-sm uppercase tracking-wider transition-all duration-200 flex items-center space-x-2 shadow-lg cursor-pointer ${
+              isActive
+                ? 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700'
+                : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white shadow-indigo-500/25 active:scale-98'
+            }`}
+          >
+            {isActive ? (
+              <>
+                <Pause className="w-5 h-5 fill-white" />
+                <span>Pausar Foco</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-5 h-5 fill-white" />
+                <span>Iniciar Deep Work</span>
+              </>
+            )}
+          </button>
+        </div>
+
         {/* ACTIVE TASK CONTAINER */}
-        <div className="w-full mb-8 relative">
+        <div className="w-full relative shrink-0">
           <span className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-widest block mb-1">
             // OBJETIVO EM FOCO ABSOLUTO
           </span>
@@ -322,125 +441,6 @@ export default function DeepWorkOverlay({
               />
             </div>
           )}
-        </div>
-
-        {/* LARGE COUNTDOWN VISUAL TIMER */}
-        <div className="relative flex items-center justify-center my-2">
-          <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-full border-4 border-zinc-900 flex items-center justify-center relative shadow-[0_0_50px_rgba(99,102,241,0.15)]">
-            <svg className="absolute -rotate-90 top-0 left-0 w-full h-full">
-              <circle
-                cx="50%"
-                cy="50%"
-                r="45%"
-                fill="transparent"
-                stroke="url(#deepGlow)"
-                strokeWidth="6"
-                strokeDasharray="750"
-                strokeDashoffset={750 - (750 * progressPercent) / 100}
-                strokeLinecap="round"
-                className="transition-all duration-1000 ease-out"
-              />
-              <defs>
-                <linearGradient id="deepGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="50%" stopColor="#a855f7" />
-                  <stop offset="100%" stopColor="#ec4899" />
-                </linearGradient>
-              </defs>
-            </svg>
-
-            <div className="text-center z-10">
-              <span className="block text-5xl sm:text-6xl font-mono font-black text-white tracking-tight drop-shadow-md">
-                {formatTime(secondsLeft)}
-              </span>
-              <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-widest mt-2 block">
-                {preset === 5 ? 'PAUSA REGENERATIVA' : `SESSÃO +${preset * 3} XP`}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* PRESET PICKERS */}
-        <div className="flex space-x-2 p-1 bg-zinc-950/90 border border-zinc-800 rounded-2xl mt-8 w-full max-w-md">
-          <button
-            disabled={isActive}
-            onClick={() => setPreset(15)}
-            className={`flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 ${
-              preset === 15 ? 'bg-indigo-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-50'
-            }`}
-          >
-            <Flame className="w-3.5 h-3.5" />
-            <span>15 Min</span>
-          </button>
-
-          <button
-            disabled={isActive}
-            onClick={() => setPreset(25)}
-            className={`flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 ${
-              preset === 25 ? 'bg-indigo-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-50'
-            }`}
-          >
-            <Brain className="w-3.5 h-3.5" />
-            <span>25 Min</span>
-          </button>
-
-          <button
-            disabled={isActive}
-            onClick={() => setPreset(50)}
-            className={`flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 ${
-              preset === 50 ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-50'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>50 Min</span>
-          </button>
-
-          <button
-            disabled={isActive}
-            onClick={() => setPreset(5)}
-            className={`flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 ${
-              preset === 5 ? 'bg-emerald-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-50'
-            }`}
-          >
-            <Coffee className="w-3.5 h-3.5" />
-            <span>5m Pausa</span>
-          </button>
-        </div>
-
-        {/* TIMER CONTROLS */}
-        <div className="flex items-center space-x-4 mt-6">
-          <button
-            onClick={() => {
-              if (isActive) playCancelSound();
-              setIsActive(false);
-              setSecondsLeft(preset * 60);
-            }}
-            className="p-3.5 rounded-2xl border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-900 active:scale-95 transition-all cursor-pointer"
-            title="Resetar tempo"
-          >
-            <RotateCcw className="w-5 h-5" />
-          </button>
-
-          <button
-            onClick={() => setIsActive(!isActive)}
-            className={`py-3.5 px-10 rounded-2xl font-mono font-black text-sm uppercase tracking-wider transition-all duration-200 flex items-center space-x-2 shadow-lg cursor-pointer ${
-              isActive
-                ? 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700'
-                : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white shadow-indigo-500/25 active:scale-98'
-            }`}
-          >
-            {isActive ? (
-              <>
-                <Pause className="w-5 h-5 fill-white" />
-                <span>Pausar Foco</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5 fill-white" />
-                <span>Iniciar Deep Work</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
 

@@ -54,7 +54,6 @@ export default function DailyTip({ userLevel = 1, streak = 1, totalTasksComplete
         setCurrentQuote(FALLBACK_QUOTES[randomIndex]);
       }
     } catch (err) {
-      console.error("Failed to fetch level-personalized tip from Gemini:", err);
       const randomIndex = Math.floor(Math.random() * FALLBACK_QUOTES.length);
       setCurrentQuote(FALLBACK_QUOTES[randomIndex]);
     } finally {

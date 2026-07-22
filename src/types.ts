@@ -1,5 +1,5 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
-export type TaskCategory = 'work' | 'study' | 'health' | 'organization' | 'creative';
+export type TaskCategory = 'work' | 'personal' | 'study' | 'health' | 'organization' | 'creative';
 export type Priority = 'low' | 'medium' | 'high';
 
 export interface Task {

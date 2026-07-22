@@ -174,7 +174,7 @@ Gere os campos estritamente no formato JSON fornecido pelo esquema.
     });
 
   } catch (error: any) {
-    console.warn("Gemini motivate API notice (using fallback):", error?.message || error);
+    console.log("[Gemini Motivate] Active offline fallback (quota limit or network status)");
     return res.json({
       motivationalMessage: "Que tal fazermos apenas um pequeno movimento agora? Esqueça a pressão.",
       suggestedFocusGoal: "Apenas olhe para sua lista e escolha o item mais curto de ler.",
@@ -268,7 +268,7 @@ Retorne em Português do Brasil (PT-BR) no formato JSON estrito fornecido.`;
     });
 
   } catch (err: any) {
-    console.warn("Gemini daily tip notice (using fallback):", err?.message || err);
+    console.log("[Gemini Daily Tip] Active offline fallback tip (quota limit or network status)");
     const randomIndex = Math.floor(Math.random() * fallbackTips.length);
     return res.json({
       tip: fallbackTips[randomIndex],
@@ -1034,8 +1034,8 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
     const stripe = getStripe();
     const origin = req.headers.origin || "http://localhost:3000";
     
-    const priceAmount = planType === "monthly" ? 2790 : 29700; // R$ 27,90 or R$ 297,00 in BRL cents
-    const priceName = planType === "monthly" ? "FocusOS - Plano Mensal Premium" : "FocusOS - Plano Vitalício Premium";
+    const priceAmount = planType === "monthly" ? 2790 : 10700; // R$ 27,90 or R$ 107,00 in BRL cents
+    const priceName = planType === "monthly" ? "FocusOS - Plano Mensal Premium" : "FocusOS - Plano Anual/Vitalício Premium";
     const mode = planType === "monthly" ? "subscription" : "payment";
 
     const sessionConfig: any = {
@@ -1048,7 +1048,7 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
               name: priceName,
               description: planType === "monthly" 
                 ? "Acesso ilimitado ao FocusOS com todas as funções RPG premium inclusas. Cobrado mensalmente por R$ 27,90."
-                : "Acesso permanente e vitalício ao FocusOS com todas as funções RPG premium inclusas. Pagamento único de R$ 297,00.",
+                : "Acesso ao FocusOS com todas as funções RPG premium inclusas. Pagamento de R$ 107,00.",
             },
             unit_amount: priceAmount,
             ...(planType === "monthly" && {

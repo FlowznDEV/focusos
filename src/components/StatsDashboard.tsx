@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import { Award, Zap, Clock, CheckSquare, Sparkles, TrendingUp, PieChart as LucidePieChart, Trophy, Shield, Flame, Star, Download, FileText } from 'lucide-react';
 import { UserStats, Task } from '../types';
 import { getXPForNextLevel } from '../useGamifiedState';
@@ -113,19 +113,25 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
 
   // Aggregate completed tasks
   tasks.forEach(task => {
-    if (task.completed && task.completedAt) {
-      const dComp = new Date(task.completedAt);
-      const yStr = dComp.getFullYear();
-      const mStr = String(dComp.getMonth() + 1).padStart(2, '0');
-      const dStr = String(dComp.getDate()).padStart(2, '0');
-      const compDateStr = `${yStr}-${mStr}-${dStr}`;
-      
-      const dayObj = last7DaysData.find(item => item.dateStr === compDateStr);
-      if (dayObj) {
-        dayObj.completedCount += 1;
+    if (task.completed) {
+      const dateToUse = task.completedAt || task.createdAt;
+      if (dateToUse) {
+        const dComp = new Date(dateToUse);
+        const yStr = dComp.getFullYear();
+        const mStr = String(dComp.getMonth() + 1).padStart(2, '0');
+        const dStr = String(dComp.getDate()).padStart(2, '0');
+        const compDateStr = `${yStr}-${mStr}-${dStr}`;
+        
+        const dayObj = last7DaysData.find(item => item.dateStr === compDateStr);
+        if (dayObj) {
+          dayObj.completedCount += 1;
+        }
       }
     }
   });
+
+  const totalWeeklyCompletedTasks = last7DaysData.reduce((acc, curr) => acc + curr.completedCount, 0);
+  const avgWeeklyCompletedTasks = (totalWeeklyCompletedTasks / 7).toFixed(1);
 
   // Aggregate XP earned and focus minutes from stats.xpLogs
   stats.xpLogs.forEach(log => {
@@ -311,6 +317,58 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
 
       {/* Visual Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Chart: Quantidade de Tarefas Concluídas nos Últimos 7 Dias */}
+        <div id="weekly-completed-tasks-bar-chart-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
+                <CheckSquare className="w-4 h-4 text-emerald-400" />
+                <span>Tarefas Concluídas (Últimos 7 Dias)</span>
+              </h4>
+              <p className="text-[11px] text-zinc-500 mt-0.5">Quantidade de missões diárias finalizadas ao longo da última semana</p>
+            </div>
+            <div className="flex items-center space-x-2 text-[10px] font-mono shrink-0">
+              <span className="bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded-xl">
+                Total na semana: <strong className="text-white">{totalWeeklyCompletedTasks}</strong>
+              </span>
+              <span className="bg-zinc-850 border border-zinc-750 text-zinc-300 px-2.5 py-1 rounded-xl">
+                Média: <strong className="text-white">{avgWeeklyCompletedTasks}/dia</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={last7DaysData} margin={{ top: 20, right: 10, left: -25, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorCompletedTasksBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.9}/>
+                    <stop offset="100%" stopColor="#059669" stopOpacity={0.4}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
+                <Tooltip
+                  contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '12px', fontSize: '11px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', color: '#fff' }}
+                  formatter={(value: any) => [`${value} tarefas`, 'Concluídas']}
+                  labelFormatter={(label) => `Dia: ${label}`}
+                />
+                <Bar 
+                  dataKey="completedCount" 
+                  fill="url(#colorCompletedTasksBar)" 
+                  stroke="#10b981" 
+                  strokeWidth={1} 
+                  radius={[6, 6, 0, 0]} 
+                  name="Tarefas Concluídas"
+                >
+                  <LabelList dataKey="completedCount" position="top" fill="#10b981" fontSize={11} fontWeight="bold" formatter={(val: any) => Number(val) > 0 ? val : ''} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
         
         {/* Chart 1: Histórico de Evolução de XP */}
         <div id="xp-trend-chart-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs">

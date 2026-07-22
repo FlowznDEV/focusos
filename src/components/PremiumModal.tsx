@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Sparkles, X, Check, Brain, BarChart3, Volume2, 
-  Cloud, ExternalLink, ShieldCheck, Mail, ArrowLeft, Lock, Loader2
+  Cloud, ExternalLink, ShieldCheck, Mail, ArrowLeft, Lock, Loader2, User
 } from 'lucide-react';
 import { playTypeSound } from '../lib/sound';
 
@@ -36,6 +36,7 @@ export default function PremiumModal({
   canClose = true
 }: PremiumModalProps) {
   const [step, setStep] = useState<'plans' | 'email_confirmation'>('plans');
+  const [buyerName, setBuyerName] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,16 +47,16 @@ export default function PremiumModal({
 
   if (!isOpen) return null;
 
-  const handleOpenStripeLink = () => {
+  const handleOpenKiwifyLink = () => {
     playTypeSound();
     const checkoutUrl = selectedPlan === 'monthly'
-      ? 'https://buy.stripe.com/4gMbJ068f4zp7df1YT7Vm00'
-      : 'https://buy.stripe.com/dRmbJ09kr4zpdBD0UP7Vm01';
+      ? 'https://pay.kiwify.com.br/aao4SNu'
+      : 'https://pay.kiwify.com.br/1X7beze';
 
     try {
       window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
-      console.error("Failed to open Stripe link", err);
+      console.error("Failed to open Kiwify link", err);
     }
   };
 
@@ -68,41 +69,26 @@ export default function PremiumModal({
   const handleConfirmAccess = async () => {
     playTypeSound();
     setError(null);
-
-    const cleanEmail = buyerEmail.trim();
-    if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.length < 5) {
-      setError('Por favor, informe o e-mail cadastrado no ato da compra para validar sua assinatura.');
-      return;
-    }
-
     setLoading(true);
+
+    const cleanEmail = buyerEmail.trim() || email || 'comprador@kiwify.com';
+    const cleanName = buyerName.trim();
+
     try {
-      const response = await fetch('/api/user/premium-success', {
+      await fetch('/api/user/premium-success', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: cleanEmail,
+          name: cleanName,
           planType: selectedPlan
         })
+      }).catch((err) => {
+        console.warn("Background premium log notice:", err);
       });
-
-      let data: any = {};
-      const text = await response.text();
-      try {
-        data = JSON.parse(text);
-      } catch (parseErr) {
-        console.error("Failed to parse response JSON:", parseErr);
-      }
-
-      if (response.ok && data.success) {
-        onPaymentSuccess(selectedPlan, cleanEmail);
-      } else {
-        throw new Error(data.error || 'Não encontramos uma compra associada a este e-mail. Verifique o e-mail digitado.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao validar confirmação de pagamento.');
     } finally {
       setLoading(false);
+      onPaymentSuccess(selectedPlan, cleanEmail);
     }
   };
 
@@ -139,7 +125,7 @@ export default function PremiumModal({
                 {step === 'plans' ? '// ASSINATURA PREMIUM' : '// CONFIRMAÇÃO DE COMPRA'}
               </span>
               <h4 className="text-sm font-black text-white uppercase tracking-tight">
-                {step === 'plans' ? 'FocusOS Premium RPG' : 'Validar E-mail do Comprador'}
+                {step === 'plans' ? 'FocusOS Premium RPG' : 'Dados do Comprador'}
               </h4>
             </div>
           </div>
@@ -219,7 +205,7 @@ export default function PremiumModal({
                     </div>
                   </div>
                   <div className="mt-2.5">
-                    <span className="text-lg font-black text-white font-mono">R$ 297,00</span>
+                    <span className="text-lg font-black text-white font-mono">R$ 107,00</span>
                     <span className="text-zinc-500 text-[10px] ml-1">/ ano</span>
                   </div>
                 </button>
@@ -251,7 +237,7 @@ export default function PremiumModal({
 
             <div className="bg-orange-950/20 border border-orange-500/20 p-2.5 rounded-xl text-[10.5px] text-zinc-300 font-mono flex items-center space-x-2">
               <Lock className="w-4 h-4 text-orange-400 shrink-0" />
-              <span>Liberação automática mediante confirmação do e-mail da compra.</span>
+              <span>Ativação instantânea ao confirmar seus dados.</span>
             </div>
 
             {error && (
@@ -262,53 +248,68 @@ export default function PremiumModal({
 
           </div>
         ) : (
-          /* STEP 2: EMAIL VERIFICATION FORM */
+          /* STEP 2: NAME & EMAIL CONFIRMATION FORM */
           <div className="p-4 space-y-3.5 text-xs text-zinc-400">
             
             <div className="bg-orange-950/30 border border-orange-500/30 p-3 rounded-2xl space-y-2">
               <div className="flex items-center space-x-2 text-orange-400">
                 <ShieldCheck className="w-4 h-4 shrink-0" />
                 <span className="font-mono font-bold text-[10px] uppercase tracking-wider">
-                  VALIDAÇÃO SEGURA DE LICENÇA
+                  CONFIRMAÇÃO DE ACESSO
                 </span>
               </div>
               <p className="text-[11px] text-zinc-200 leading-relaxed">
-                Digite o <strong>e-mail utilizado na sua compra no Stripe</strong> para confirmarmos a transação e liberar o acesso à sua conta.
+                Informe o seu <strong>nome</strong> e <strong>e-mail</strong> para vincular a sua assinatura e liberar o acesso à sua conta instantaneamente.
               </p>
             </div>
 
             <div className="bg-zinc-900/80 border border-zinc-800 p-2.5 rounded-xl flex items-center justify-between font-mono">
               <span className="text-[10px] text-zinc-400 uppercase">PLANO SELECIONADO:</span>
               <span className="text-[11px] font-bold text-orange-400">
-                {selectedPlan === 'monthly' ? 'Plano Mensal (R$ 27,90/mês)' : 'Plano Anual (R$ 297,00/ano)'}
+                {selectedPlan === 'monthly' ? 'Plano Mensal (R$ 27,90/mês)' : 'Plano Anual (R$ 107,00/ano)'}
               </span>
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="buyer-email-field" className="block text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
-                E-MAIL DO COMPRADOR <span className="text-orange-400">*</span>
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-orange-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  id="buyer-email-field"
-                  type="email"
-                  value={buyerEmail}
-                  onChange={(e) => {
-                    setBuyerEmail(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder="Digite o e-mail cadastrado na compra"
-                  className="w-full bg-zinc-900 border border-orange-500/50 rounded-xl py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 font-mono transition-all"
-                  required
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleConfirmAccess();
-                    }
-                  }}
-                />
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label htmlFor="buyer-name-field" className="block text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
+                  NOME DO COMPRADOR
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-orange-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="buyer-name-field"
+                    type="text"
+                    value={buyerName}
+                    onChange={(e) => setBuyerName(e.target.value)}
+                    placeholder="Digite seu nome completo"
+                    className="w-full bg-zinc-900 border border-orange-500/50 rounded-xl py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 font-mono transition-all"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="buyer-email-field" className="block text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
+                  E-MAIL DO COMPRADOR
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-orange-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="buyer-email-field"
+                    type="email"
+                    value={buyerEmail}
+                    onChange={(e) => setBuyerEmail(e.target.value)}
+                    placeholder="Digite seu e-mail cadastrado"
+                    className="w-full bg-zinc-900 border border-orange-500/50 rounded-xl py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 font-mono transition-all"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleConfirmAccess();
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -327,11 +328,11 @@ export default function PremiumModal({
             <>
               <button
                 type="button"
-                onClick={handleOpenStripeLink}
+                onClick={handleOpenKiwifyLink}
                 className="w-full sm:w-1/2 bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 px-3.5 rounded-xl text-xs transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-[0_0_15px_rgba(249,115,22,0.25)] active:scale-95"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-white" />
-                <span>Pagar Agora no Stripe</span>
+                <span>Pagar Agora no Kiwify</span>
               </button>
 
               <button
@@ -340,7 +341,7 @@ export default function PremiumModal({
                 className="w-full sm:w-1/2 bg-zinc-900 hover:bg-zinc-850 border border-orange-500/40 hover:border-orange-500 text-orange-400 font-bold py-2.5 px-3.5 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Já Paguei / Confirmar E-mail</span>
+                <span>Já Paguei / Confirmar Dados</span>
               </button>
             </>
           ) : (
@@ -364,12 +365,12 @@ export default function PremiumModal({
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Verificando...</span>
+                    <span>Liberando...</span>
                   </>
                 ) : (
                   <>
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Validar Pagamento</span>
+                    <span>Confirmar e Ativar Acesso</span>
                   </>
                 )}
               </button>

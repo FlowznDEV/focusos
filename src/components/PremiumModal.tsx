@@ -17,6 +17,7 @@ interface PremiumModalProps {
   usedFunctionsCount: number;
   totalFunctionsCount: number;
   daysOfUse: number;
+  completedTasksCount?: number;
   onPaymentSuccess: (planType: string, buyerEmail?: string) => void;
   onSimulateTasks?: () => void;
   onSimulateFunctions?: () => void;
@@ -28,7 +29,9 @@ export default function PremiumModal({
   isOpen,
   onClose,
   email,
+  stats,
   daysOfUse = 0,
+  completedTasksCount = 0,
   onPaymentSuccess,
   canClose = true
 }: PremiumModalProps) {
@@ -37,6 +40,9 @@ export default function PremiumModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('monthly');
+
+  const tasksDone = stats?.totalTasksCompleted ?? completedTasksCount;
+  const isTrialExpired = daysOfUse >= 1 || tasksDone >= 3;
 
   if (!isOpen) return null;
 
@@ -153,7 +159,7 @@ export default function PremiumModal({
           <div className="p-4 space-y-3.5 text-xs text-zinc-400 overflow-y-auto">
             
             {/* FREE TRIAL EXPIRED BANNER NOTICE */}
-            {daysOfUse >= 1 && (
+            {isTrialExpired && (
               <div className="bg-gradient-to-r from-orange-950/80 via-amber-950/90 to-orange-950/80 border border-orange-500/50 p-3.5 rounded-2xl text-white flex items-center space-x-3 shadow-lg shadow-orange-500/10 animate-fade-in">
                 <div className="bg-orange-500/20 border border-orange-500/30 p-2 rounded-xl text-orange-400 shrink-0">
                   <Sparkles className="w-5 h-5 animate-pulse" />
@@ -163,7 +169,7 @@ export default function PremiumModal({
                     ⚠️ O SEU PERÍODO DE TESTE GRÁTIS ACABOU!
                   </span>
                   <p className="text-[11px] text-zinc-200 mt-0.5 leading-snug font-medium">
-                    Seu período de teste grátis expirou. Escolha um plano abaixo para liberar acesso ilimitado a todas as ferramentas do HUD!
+                    Seu período de teste grátis expirou (1 dia de uso ou 3 tarefas concluídas). Escolha um plano abaixo para liberar acesso ilimitado!
                   </p>
                 </div>
               </div>

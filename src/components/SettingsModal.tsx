@@ -15,6 +15,7 @@ interface SettingsModalProps {
   onToggleZen: () => void;
   premium: boolean;
   daysOfUse: number;
+  completedTasksCount?: number;
   onOpenPremiumModal: () => void;
   onResetJourney: () => void;
 }
@@ -32,6 +33,7 @@ export default function SettingsModal({
   onToggleZen,
   premium,
   daysOfUse,
+  completedTasksCount = 0,
   onOpenPremiumModal,
   onResetJourney,
 }: SettingsModalProps) {
@@ -221,7 +223,7 @@ export default function SettingsModal({
                       {premium ? 'Plano Premium Ativo' : 'Período Gratuito de Teste'}
                     </span>
                     <span className="text-[10px] text-zinc-400 font-mono">
-                      Dias de uso registrados: {daysOfUse} {daysOfUse === 1 ? 'dia' : 'dias'}
+                      Dias: {daysOfUse} | Tarefas concluídas: {completedTasksCount}/3
                     </span>
                   </div>
                 </div>
@@ -239,10 +241,10 @@ export default function SettingsModal({
                 )}
               </div>
 
-              {!premium && daysOfUse >= 1 && (
+              {!premium && (daysOfUse >= 1 || completedTasksCount >= 3) && (
                 <div className="bg-amber-950/40 border border-amber-500/40 p-2.5 rounded-xl text-[10.5px] text-amber-200 font-mono flex items-center space-x-2">
                   <span className="text-amber-400 font-bold shrink-0">⚠️</span>
-                  <span>O período de teste grátis terminou. Assine o Premium para desbloquear acesso ilimitado.</span>
+                  <span>O teste grátis terminou (1 dia de uso ou 3 tarefas concluídas). Assine o Premium para acesso ilimitado.</span>
                 </div>
               )}
             </div>

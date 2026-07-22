@@ -74,6 +74,9 @@ export interface LongTermGoal {
   title: string;
   description?: string;
   createdAt: string;
+  startDate?: string;
+  endDate?: string;
+  completedAt?: string;
   completed: boolean;
   subtasks: SubTask[];
 }

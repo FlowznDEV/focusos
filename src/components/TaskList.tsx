@@ -258,6 +258,24 @@ export default function TaskList({
             </button>
           </div>
 
+          {/* Clear completed daily quests button */}
+          {tasks.some(t => t.completed) && (
+            <button
+              id="clear-completed-tasks-btn"
+              type="button"
+              onClick={() => {
+                const completedList = tasks.filter(t => t.completed);
+                completedList.forEach(t => deleteTask(t.id));
+                playTypeSound();
+              }}
+              className="py-1 px-3 text-[11px] font-bold rounded-xl text-rose-400 bg-rose-950/40 border border-rose-900/50 hover:bg-rose-900/60 hover:text-white transition-all flex items-center space-x-1.5 cursor-pointer shrink-0"
+              title="Excluir todas as Daily Quests concluídas"
+            >
+              <Trash className="w-3.5 h-3.5" />
+              <span>Limpar Concluídas ({tasks.filter(t => t.completed).length})</span>
+            </button>
+          )}
+
           {/* Priority filter chips */}
           <div className="flex items-center space-x-1 bg-zinc-900/80 border border-zinc-800 p-1 rounded-xl w-fit shrink-0">
             <span className="text-[10px] text-zinc-500 font-bold px-2 uppercase tracking-wider font-mono">Prioridade:</span>
@@ -335,7 +353,7 @@ export default function TaskList({
         ) : (
           filteredTasks.map((task) => {
             const isSelected = selectedTaskId === task.id;
-            const diffInfo = DIFFICULTY_MAP[task.difficulty];
+            const diffInfo = DIFFICULTY_MAP[task.difficulty] || DIFFICULTY_MAP.easy;
             const catInfo = CATEGORIES.find(c => c.value === task.category);
             
             return (
@@ -434,7 +452,7 @@ export default function TaskList({
                   <button
                     id={`delete-task-btn-${task.id}`}
                     onClick={() => deleteTask(task.id)}
-                    className="p-2 rounded-xl border border-zinc-800 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 hover:border-rose-900/40 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    className="p-2 rounded-xl border border-zinc-800 text-zinc-400 hover:text-rose-400 hover:bg-rose-950/40 hover:border-rose-900/50 transition-all cursor-pointer"
                     title="Excluir missão"
                   >
                     <Trash className="w-3.5 h-3.5" />

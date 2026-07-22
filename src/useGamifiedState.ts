@@ -483,11 +483,13 @@ export function useGamifiedState() {
     setJournalEntries(prev => prev.filter(entry => entry.id !== id));
   }, []);
 
-  const addLongTermGoal = useCallback((title: string, description?: string, subtaskTitles: string[] = []) => {
+  const addLongTermGoal = useCallback((title: string, description?: string, subtaskTitles: string[] = [], startDate?: string, endDate?: string) => {
     const newGoal: LongTermGoal = {
       id: Math.random().toString(36).substring(2, 9),
       title,
       description,
+      startDate,
+      endDate,
       createdAt: new Date().toISOString(),
       completed: false,
       subtasks: subtaskTitles.map(t => ({
@@ -498,6 +500,35 @@ export function useGamifiedState() {
     };
     setLongTermGoals(prev => [newGoal, ...prev]);
     addXPDirectly(50, `Novo Objetivo: ${title}`);
+  }, []);
+
+  const toggleLongTermGoalCompletion = useCallback((goalId: string) => {
+    setLongTermGoals(prev => prev.map(goal => {
+      if (goal.id !== goalId) return goal;
+      const willBeCompleted = !goal.completed;
+
+      if (willBeCompleted) {
+        playTaskCompleteSound();
+        setTriggerConfetti(c => c + 1);
+        addXPDirectly(150, `🏆 META CONCLUÍDA: ${goal.title}!`);
+      } else {
+        playCancelSound();
+        addXPDirectly(-150, `Reabertura da meta: ${goal.title}`);
+      }
+
+      const updatedSubtasks = goal.subtasks.map(sub => ({
+        ...sub,
+        completed: willBeCompleted ? true : sub.completed,
+        completedAt: willBeCompleted && !sub.completed ? new Date().toISOString() : sub.completedAt
+      }));
+
+      return {
+        ...goal,
+        completed: willBeCompleted,
+        completedAt: willBeCompleted ? new Date().toISOString() : undefined,
+        subtasks: updatedSubtasks
+      };
+    }));
   }, []);
 
   const addSubTaskToGoal = useCallback((goalId: string, title: string) => {
@@ -604,6 +635,7 @@ export function useGamifiedState() {
     deleteJournalEntry,
     addLongTermGoal,
     deleteLongTermGoal,
+    toggleLongTermGoalCompletion,
     toggleSubTaskCompletion,
     addSubTaskToGoal,
     activeNotification,

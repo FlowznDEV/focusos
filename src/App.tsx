@@ -49,6 +49,7 @@ export default function App() {
     deleteJournalEntry,
     addLongTermGoal,
     deleteLongTermGoal,
+    toggleLongTermGoalCompletion,
     toggleSubTaskCompletion,
     addSubTaskToGoal,
     activeNotification,
@@ -160,6 +161,9 @@ export default function App() {
     const realDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return realDays + simulatedDays;
   };
+
+  const completedTasksCount = Math.max(stats.totalTasksCompleted || 0, tasks.filter(t => t.completed).length);
+  const isTrialEnded = getDaysOfUse() >= 1 || completedTasksCount >= 3;
 
   // Listen to Stripe payment success redirect URL params
   useEffect(() => {
@@ -454,7 +458,7 @@ export default function App() {
     priority?: any
   ) => {
     trackFunctionUsed('task');
-    return addTask(title, description, difficulty, category, priority, estimatedFocusPomodoros);
+    return addTask(title, description, difficulty, category, estimatedFocusPomodoros || 1, priority || 'medium');
   };
 
   const handleAddJournalEntryWrapper = (mood: string, notes: string) => {
@@ -464,7 +468,7 @@ export default function App() {
 
   const handleSimulateTasks = () => {
     for (let i = 1; i <= 5; i++) {
-      const t = addTask(`Missão Simulada #${i}`, 'Simulação de Upgrade Premium', 'easy', 'work', 'medium', 1);
+      const t = addTask(`Missão Simulada #${i}`, 'Simulação de Upgrade Premium', 'easy', 'work', 1, 'medium');
       if (t && t.id) {
         toggleTaskCompletion(t.id);
       }
@@ -779,8 +783,8 @@ export default function App() {
                 >
                   <Sparkles className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
                   <span className="hidden sm:inline ml-1.5 font-bold font-mono">Premium RPG</span>
-                  {/* Glowing eligibility indicator dot if 1 day of use is met */}
-                  {getDaysOfUse() >= 1 && (
+                  {/* Glowing eligibility indicator dot if trial condition is met */}
+                  {isTrialEnded && (
                     <>
                       <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping pointer-events-none" />
                       <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-zinc-950 pointer-events-none" />
@@ -879,82 +883,86 @@ export default function App() {
             </div>
           )}
 
-          {/* Premium Navigation Tabs on Desktop/Tablet */}
-          {!zenMode && (
-            <div className="hidden md:flex items-center space-x-2 mt-4 pt-3.5 border-t border-zinc-900/60">
+        </div>
+      </header>
+
+      {/* Always Sticky Function Navigation Tabs Bar */}
+      {!zenMode && (
+        <nav className="sticky top-0 z-40 bg-zinc-950/95 border-b border-zinc-850/80 backdrop-blur-md px-4 sm:px-6 md:px-8 py-2.5 shadow-lg transition-all">
+          <div className="w-full flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
               <button
                 onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'tasks'
-                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
+                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <CheckSquare className="w-3.5 h-3.5" />
+                <CheckSquare className="w-3.5 h-3.5 text-orange-400" />
                 <span>Missões & Foco</span>
               </button>
 
               <button
                 onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'stats'
-                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
+                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <BarChart2 className="w-3.5 h-3.5" />
+                <BarChart2 className="w-3.5 h-3.5 text-orange-400" />
                 <span>Evolução & Gráficos</span>
               </button>
 
               <button
                 onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'coach'
-                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
+                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <Brain className="w-3.5 h-3.5" />
-                <span>Treinador Mental IA</span>
+                <Brain className="w-3.5 h-3.5 text-orange-400" />
+                <span>Treinador IA</span>
               </button>
 
               <button
                 onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'achievements'
-                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
+                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <Trophy className="w-3.5 h-3.5" />
+                <Trophy className="w-3.5 h-3.5 text-orange-400" />
                 <span>Conquistas ({achievements.filter(a => a.unlocked).length})</span>
               </button>
 
               <button
                 onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'journal'
-                    ? 'bg-orange-950/40 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)] font-extrabold'
-                    : 'text-zinc-500 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent'
+                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
+                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <BookOpen className="w-3.5 h-3.5" />
+                <BookOpen className="w-3.5 h-3.5 text-orange-400" />
                 <span>Diário</span>
               </button>
-
-              <button
-                onClick={() => { setShowSettingsModal(true); playTypeSound(); }}
-                className="flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/30 border border-transparent transition-all duration-300 cursor-pointer ml-auto"
-                title="Configurações & Temas do HUD"
-              >
-                <Sliders className="w-3.5 h-3.5 text-orange-400" />
-                <span>Configurações do HUD</span>
-              </button>
             </div>
-          )}
 
-        </div>
-      </header>
+            <button
+              onClick={() => { setShowSettingsModal(true); playTypeSound(); }}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-zinc-850 transition-all duration-200 cursor-pointer shrink-0 ml-auto"
+              title="Configurações & Temas do HUD"
+            >
+              <Sliders className="w-3.5 h-3.5 text-orange-400" />
+              <span className="hidden sm:inline">Configurações</span>
+            </button>
+          </div>
+        </nav>
+      )}
 
       {/* Daily Focus Tip Message */}
       {!zenMode && (
@@ -1032,7 +1040,7 @@ export default function App() {
       {/* Main Content Workspace Grid */}
       <main className="w-full flex-1 px-4 sm:px-6 md:px-8 lg:px-10 mt-4 pb-24 md:pb-12">
         {/* Active Premium purchase notification banner */}
-        {!premium && getDaysOfUse() >= 1 && showPremiumPrompt && !showDeepWork && (
+        {!premium && isTrialEnded && showPremiumPrompt && !showDeepWork && (
           <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-orange-950/90 via-amber-950/90 to-orange-950/90 border border-orange-500/50 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_25px_rgba(249,115,22,0.2)] relative overflow-hidden group animate-pop-in">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-400/60 to-transparent animate-pulse" />
             <div className="flex items-center space-x-3.5 text-left">
@@ -1108,6 +1116,7 @@ export default function App() {
                         goals={longTermGoals}
                         onAddGoal={addLongTermGoal}
                         onDeleteGoal={deleteLongTermGoal}
+                        onToggleGoalCompletion={toggleLongTermGoalCompletion}
                         onToggleSubtask={toggleSubTaskCompletion}
                         onAddSubtaskToGoal={addSubTaskToGoal}
                       />
@@ -1534,7 +1543,7 @@ export default function App() {
 
       {/* Premium presentation & checkout dialog modal */}
       <PremiumModal
-        isOpen={showPremiumModal || (!premium && getDaysOfUse() >= 1)}
+        isOpen={showPremiumModal || (!premium && isTrialEnded)}
         onClose={() => setShowPremiumModal(false)}
         email={session?.email || 'usuario.teste@focusquest.com'}
         stats={{
@@ -1545,7 +1554,8 @@ export default function App() {
         usedFunctionsCount={usedFunctions.filter(f => ['sound', 'filter', 'zen', 'task', 'journal'].includes(f)).length}
         totalFunctionsCount={5} // Total active functions: sound, filter, zen, task, journal
         daysOfUse={getDaysOfUse()}
-        canClose={!(getDaysOfUse() >= 1 && !premium)}
+        completedTasksCount={completedTasksCount}
+        canClose={!(isTrialEnded && !premium)}
         onPaymentSuccess={(type, buyerEmail) => {
           setPremium(true);
           setPlanType(type);
@@ -1586,6 +1596,7 @@ export default function App() {
         }}
         premium={premium}
         daysOfUse={getDaysOfUse()}
+        completedTasksCount={completedTasksCount}
         onOpenPremiumModal={() => setShowPremiumModal(true)}
         onResetJourney={() => setShowResetConfirm(true)}
       />

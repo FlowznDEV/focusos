@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Target, Plus, Trash2, CheckSquare, Square, ChevronRight, Compass, Sparkles, FolderPlus, ListTodo } from 'lucide-react';
+import { Target, Plus, Trash2, CheckSquare, Square, ChevronRight, Compass, Sparkles, FolderPlus, ListTodo, Calendar, Clock, CheckCircle } from 'lucide-react';
 import { LongTermGoal } from '../types';
 
 interface LongTermGoalsProps {
   goals: LongTermGoal[];
-  onAddGoal: (title: string, description?: string, subtaskTitles?: string[]) => void;
+  onAddGoal: (title: string, description?: string, subtaskTitles?: string[], startDate?: string, endDate?: string) => void;
   onDeleteGoal: (id: string) => void;
+  onToggleGoalCompletion?: (goalId: string) => void;
   onToggleSubtask: (goalId: string, subtaskId: string) => void;
   onAddSubtaskToGoal: (goalId: string, title: string) => void;
 }
@@ -14,6 +15,7 @@ export default function LongTermGoals({
   goals,
   onAddGoal,
   onDeleteGoal,
+  onToggleGoalCompletion,
   onToggleSubtask,
   onAddSubtaskToGoal
 }: LongTermGoalsProps) {
@@ -22,11 +24,26 @@ export default function LongTermGoals({
   // Create Goal Form state
   const [goalTitle, setGoalTitle] = useState('');
   const [goalDesc, setGoalDesc] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [tempSubtask, setTempSubtask] = useState('');
   const [tempSubtasksList, setTempSubtasksList] = useState<string[]>([]);
 
   // Add inline subtask input state per goal ID
   const [inlineSubtaskText, setInlineSubtaskText] = useState<Record<string, string>>({});
+
+  const formatDateDisplay = (dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+      const [year, month, day] = dateStr.split('-');
+      if (year && month && day) {
+        return `${day}/${month}/${year}`;
+      }
+      return new Date(dateStr).toLocaleDateString('pt-BR');
+    } catch {
+      return dateStr;
+    }
+  };
 
   const handleAddTempSubtask = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -48,12 +65,16 @@ export default function LongTermGoals({
     onAddGoal(
       goalTitle.trim(),
       goalDesc.trim() || undefined,
-      tempSubtasksList
+      tempSubtasksList,
+      startDate || undefined,
+      endDate || undefined
     );
 
     // Reset states
     setGoalTitle('');
     setGoalDesc('');
+    setStartDate('');
+    setEndDate('');
     setTempSubtask('');
     setTempSubtasksList([]);
     setIsCreating(false);
@@ -84,16 +105,32 @@ export default function LongTermGoals({
             <span>Objetivos de Longo Prazo</span>
             <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
           </h2>
-          <p className="text-xs text-zinc-500 mt-1">Divida grandes sonhos em etapas claras e conquiste grandes recompensas de XP.</p>
+          <p className="text-xs text-zinc-500 mt-1">Divida grandes sonhos em etapas claras, defina datas e conquiste recompensas de XP.</p>
         </div>
         
-        <button
-          onClick={() => setIsCreating(!isCreating)}
-          className="flex items-center justify-center space-x-1.5 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 hover:border-indigo-500/60 text-indigo-400 font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
-        >
-          <FolderPlus className="w-4 h-4" />
-          <span>{isCreating ? 'Fechar Painel' : 'Definir Meta'}</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          {goals.some(g => g.completed || (g.subtasks.length > 0 && g.subtasks.every(s => s.completed))) && (
+            <button
+              onClick={() => {
+                const completedGoals = goals.filter(g => g.completed || (g.subtasks.length > 0 && g.subtasks.every(s => s.completed)));
+                completedGoals.forEach(g => onDeleteGoal(g.id));
+              }}
+              className="flex items-center justify-center space-x-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-900/50 text-rose-400 font-bold px-3 py-2.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
+              title="Excluir metas de longo prazo concluídas"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Limpar Concluídas ({goals.filter(g => g.completed || (g.subtasks.length > 0 && g.subtasks.every(s => s.completed))).length})</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsCreating(!isCreating)}
+            className="flex items-center justify-center space-x-1.5 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 hover:border-indigo-500/60 text-indigo-400 font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
+          >
+            <FolderPlus className="w-4 h-4" />
+            <span>{isCreating ? 'Fechar Painel' : 'Definir Meta'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Goal Creator Form Panel */}
@@ -126,9 +163,33 @@ export default function LongTermGoals({
                     value={goalDesc}
                     onChange={(e) => setGoalDesc(e.target.value)}
                     placeholder="Ex: Dominar componentização e hooks para criar aplicativos incríveis do zero."
-                    rows={3}
-                    className="w-full text-xs border border-zinc-900 hover:border-indigo-500/20 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-xl px-3 py-2 bg-zinc-900/30 text-white placeholder-zinc-600 transition-all resize-none h-24"
+                    rows={2}
+                    className="w-full text-xs border border-zinc-900 hover:border-indigo-500/20 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-xl px-3 py-2 bg-zinc-900/30 text-white placeholder-zinc-600 transition-all resize-none h-20"
                   />
+                </div>
+
+                {/* Dates selection */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label htmlFor="goal-start-date" className="text-[10px] text-zinc-400 font-mono block mb-1">📅 Data de Início:</label>
+                    <input
+                      id="goal-start-date"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full text-xs border border-zinc-900 hover:border-indigo-500/20 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-xl px-3 py-1.5 bg-zinc-900/30 text-white transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="goal-end-date" className="text-[10px] text-zinc-400 font-mono block mb-1">🏁 Prazo / Término:</label>
+                    <input
+                      id="goal-end-date"
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full text-xs border border-zinc-900 hover:border-indigo-500/20 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-xl px-3 py-1.5 bg-zinc-900/30 text-white transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -162,9 +223,9 @@ export default function LongTermGoals({
                 </div>
 
                 {/* Subtasks List */}
-                <div className="flex-1 min-h-[80px] max-h-[120px] overflow-y-auto border border-zinc-900/50 rounded-xl p-2 bg-zinc-950/40 space-y-1.5 mt-2">
+                <div className="flex-1 min-h-[100px] max-h-[150px] overflow-y-auto border border-zinc-900/50 rounded-xl p-2 bg-zinc-950/40 space-y-1.5 mt-2">
                   {tempSubtasksList.length === 0 ? (
-                    <p className="text-[10px] text-zinc-600 text-center py-4 italic font-mono">Adicione sub-tarefas para acompanhar seu progresso.</p>
+                    <p className="text-[10px] text-zinc-600 text-center py-6 italic font-mono">Adicione sub-tarefas para acompanhar seu progresso.</p>
                   ) : (
                     tempSubtasksList.map((st, idx) => (
                       <div key={idx} className="flex items-center justify-between gap-2 bg-zinc-900/40 px-2 py-1 rounded-lg border border-zinc-900">
@@ -212,7 +273,7 @@ export default function LongTermGoals({
           </div>
           <h4 className="text-sm font-semibold text-zinc-400">Nenhum Objetivo Definido</h4>
           <p className="text-xs text-zinc-600 mt-1 max-w-sm">
-            Defina uma meta de longo prazo de sua escolha. Crie um objetivo grande e divida em micro etapas para conquistar foco constante.
+            Defina uma meta de longo prazo de sua escolha. Crie um objetivo grande e divida em micro etapas com datas de início e término.
           </p>
         </div>
       ) : (
@@ -220,7 +281,7 @@ export default function LongTermGoals({
           {goals.map((goal) => {
             const totalSubtasks = goal.subtasks.length;
             const completedSubtasks = goal.subtasks.filter(s => s.completed).length;
-            const percentage = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+            const percentage = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : (goal.completed ? 100 : 0);
             const isCompleted = goal.completed || (totalSubtasks > 0 && completedSubtasks === totalSubtasks);
 
             return (
@@ -246,8 +307,9 @@ export default function LongTermGoals({
                           {goal.title}
                         </h4>
                         {isCompleted && (
-                          <span className="text-[9px] font-mono font-bold bg-emerald-950 border border-emerald-500/30 text-emerald-400 px-1.5 py-0.5 rounded-md uppercase shrink-0">
-                            Completo 🏆
+                          <span className="text-[9px] font-mono font-bold bg-emerald-950 border border-emerald-500/30 text-emerald-400 px-1.5 py-0.5 rounded-md uppercase shrink-0 flex items-center space-x-1">
+                            <span>Concluída</span>
+                            <span>🏆</span>
                           </span>
                         )}
                       </div>
@@ -256,22 +318,42 @@ export default function LongTermGoals({
                           {goal.description}
                         </p>
                       )}
+
+                      {/* Dates Display Badges */}
+                      {(goal.startDate || goal.endDate) && (
+                        <div className="flex items-center space-x-2 text-[10px] font-mono text-zinc-400 mt-2 bg-zinc-900/60 px-2.5 py-1 rounded-xl border border-zinc-850 w-fit flex-wrap gap-y-1">
+                          {goal.startDate && (
+                            <span className="flex items-center space-x-1">
+                              <Calendar className="w-3 h-3 text-indigo-400" />
+                              <span>Início: <strong className="text-zinc-200">{formatDateDisplay(goal.startDate)}</strong></span>
+                            </span>
+                          )}
+                          {goal.startDate && goal.endDate && <span className="text-zinc-700">|</span>}
+                          {goal.endDate && (
+                            <span className="flex items-center space-x-1">
+                              <Clock className="w-3 h-3 text-pink-400" />
+                              <span>Prazo: <strong className="text-zinc-200">{formatDateDisplay(goal.endDate)}</strong></span>
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <button
                       onClick={() => onDeleteGoal(goal.id)}
-                      className="text-zinc-700 hover:text-red-400 p-1 rounded-lg hover:bg-zinc-900/60 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                      title="Excluir Meta"
+                      className="text-zinc-400 hover:text-rose-400 p-2 rounded-xl border border-zinc-850 hover:border-rose-900/50 bg-zinc-900/60 hover:bg-rose-950/40 transition-all cursor-pointer shrink-0 flex items-center space-x-1"
+                      title="Excluir Meta de Longo Prazo"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold hidden sm:inline">Excluir</span>
                     </button>
                   </div>
 
                   {/* Progress Section */}
                   <div className="space-y-1.5 my-3">
                     <div className="flex justify-between items-center text-[10px] font-mono">
-                      <span className="text-zinc-500">CONQUISTA VISUAL</span>
-                      <span className={isCompleted ? 'text-emerald-400' : 'text-indigo-400'}>
+                      <span className="text-zinc-500">PROGRESSO DA META</span>
+                      <span className={isCompleted ? 'text-emerald-400 font-bold' : 'text-indigo-400'}>
                         {completedSubtasks}/{totalSubtasks} ({percentage}%)
                       </span>
                     </div>
@@ -289,7 +371,7 @@ export default function LongTermGoals({
                   </div>
 
                   {/* Subtasks Stack */}
-                  <div className="space-y-1.5 mt-4 max-h-[180px] overflow-y-auto pr-1">
+                  <div className="space-y-1.5 mt-3 max-h-[160px] overflow-y-auto pr-1">
                     {goal.subtasks.map((sub) => (
                       <div
                         key={sub.id}
@@ -317,30 +399,48 @@ export default function LongTermGoals({
 
                 </div>
 
-                {/* Inline Append Subtask Form */}
-                <form
-                  onSubmit={(e) => handleAddInlineSubtask(goal.id, e)}
-                  className="mt-4 pt-3 border-t border-zinc-900/60 flex gap-2"
-                >
-                  <input
-                    type="text"
-                    required
-                    placeholder="Adicionar subtarefa..."
-                    value={inlineSubtaskText[goal.id] || ''}
-                    onChange={(e) => setInlineSubtaskText({
-                      ...inlineSubtaskText,
-                      [goal.id]: e.target.value
-                    })}
-                    className="flex-1 text-[11px] border border-zinc-900 hover:border-indigo-500/20 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-lg px-2.5 py-1.5 bg-zinc-900/30 text-white placeholder-zinc-600 transition-all"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center shrink-0"
-                    title="Adicionar Subtarefa"
+                {/* Bottom Actions: Inline Subtask + Goal Completion Toggle */}
+                <div className="mt-4 pt-3 border-t border-zinc-900/80 space-y-2.5">
+                  <form
+                    onSubmit={(e) => handleAddInlineSubtask(goal.id, e)}
+                    className="flex gap-2"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </form>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Adicionar subtarefa..."
+                      value={inlineSubtaskText[goal.id] || ''}
+                      onChange={(e) => setInlineSubtaskText({
+                        ...inlineSubtaskText,
+                        [goal.id]: e.target.value
+                      })}
+                      className="flex-1 text-[11px] border border-zinc-900 hover:border-indigo-500/20 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden rounded-lg px-2.5 py-1.5 bg-zinc-900/30 text-white placeholder-zinc-600 transition-all"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center shrink-0"
+                      title="Adicionar Subtarefa"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
+
+                  {/* Manual Goal Completion Button */}
+                  {onToggleGoalCompletion && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleGoalCompletion(goal.id)}
+                      className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                        isCompleted
+                          ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-900/60'
+                          : 'bg-indigo-950/40 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white shadow-[0_0_10px_rgba(99,102,241,0.1)]'
+                      }`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{isCompleted ? 'Meta Concluída 🏆 (Clique para reabrir)' : 'Concluir Meta Completa (+150 XP)'}</span>
+                    </button>
+                  )}
+                </div>
 
               </div>
             );
@@ -351,3 +451,4 @@ export default function LongTermGoals({
     </div>
   );
 }
+

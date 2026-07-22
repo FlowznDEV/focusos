@@ -163,7 +163,7 @@ export default function App() {
   };
 
   const completedTasksCount = Math.max(stats.totalTasksCompleted || 0, tasks.filter(t => t.completed).length);
-  const isTrialEnded = getDaysOfUse() >= 1 || completedTasksCount >= 3;
+  const isTrialEnded = getDaysOfUse() >= 1 || completedTasksCount >= 5;
 
   // Listen to Stripe payment success redirect URL params
   useEffect(() => {

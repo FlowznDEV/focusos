@@ -42,7 +42,7 @@ export default function PremiumModal({
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('monthly');
 
   const tasksDone = stats?.totalTasksCompleted ?? completedTasksCount;
-  const isTrialExpired = daysOfUse >= 1 || tasksDone >= 3;
+  const isTrialExpired = daysOfUse >= 1 || tasksDone >= 5;
 
   if (!isOpen) return null;
 
@@ -169,7 +169,7 @@ export default function PremiumModal({
                     ⚠️ O SEU PERÍODO DE TESTE GRÁTIS ACABOU!
                   </span>
                   <p className="text-[11px] text-zinc-200 mt-0.5 leading-snug font-medium">
-                    Seu período de teste grátis expirou (1 dia de uso ou 3 tarefas concluídas). Escolha um plano abaixo para liberar acesso ilimitado!
+                    Seu período de teste grátis expirou (1 dia de uso ou 5 tarefas concluídas). Escolha um plano abaixo para liberar acesso ilimitado!
                   </p>
                 </div>
               </div>

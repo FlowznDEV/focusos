@@ -223,7 +223,7 @@ export default function SettingsModal({
                       {premium ? 'Plano Premium Ativo' : 'Período Gratuito de Teste'}
                     </span>
                     <span className="text-[10px] text-zinc-400 font-mono">
-                      Dias: {daysOfUse} | Tarefas concluídas: {completedTasksCount}/3
+                      Dias: {daysOfUse} | Tarefas concluídas: {completedTasksCount}/5
                     </span>
                   </div>
                 </div>
@@ -241,10 +241,10 @@ export default function SettingsModal({
                 )}
               </div>
 
-              {!premium && (daysOfUse >= 1 || completedTasksCount >= 3) && (
+              {!premium && (daysOfUse >= 1 || completedTasksCount >= 5) && (
                 <div className="bg-amber-950/40 border border-amber-500/40 p-2.5 rounded-xl text-[10.5px] text-amber-200 font-mono flex items-center space-x-2">
                   <span className="text-amber-400 font-bold shrink-0">⚠️</span>
-                  <span>O teste grátis terminou (1 dia de uso ou 3 tarefas concluídas). Assine o Premium para acesso ilimitado.</span>
+                  <span>O teste grátis terminou (1 dia de uso ou 5 tarefas concluídas). Assine o Premium para acesso ilimitado.</span>
                 </div>
               )}
             </div>

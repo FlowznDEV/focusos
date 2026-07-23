@@ -17,8 +17,9 @@ import PremiumModal from './components/PremiumModal';
 import PremiumWelcome from './components/PremiumWelcome';
 import SettingsModal from './components/SettingsModal';
 import DeepWorkOverlay from './components/DeepWorkOverlay';
+import PaymentStatusTab from './components/PaymentStatusTab';
 import { AccentTheme } from './utils/theme';
-import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon, Sliders } from 'lucide-react';
+import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon, Sliders, Lock, ShieldCheck, CreditCard } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound, playLevelUpSound } from './lib/sound';
 import { createBackupObject, triggerJsonDownload, parseAndValidateBackup, isAutoBackupDue } from './lib/backup';
 
@@ -165,13 +166,13 @@ export default function App() {
   const getDaysOfUse = () => {
     const firstUsedDate = new Date(firstUsedAt);
     const today = new Date();
-    const diffTime = Math.abs(today.getTime() - firstUsedDate.getTime());
-    const realDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffTime = Math.max(0, today.getTime() - firstUsedDate.getTime());
+    const realDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     return realDays + simulatedDays;
   };
 
   const completedTasksCount = Math.max(stats.totalTasksCompleted || 0, tasks.filter(t => t.completed).length);
-  const isTrialEnded = getDaysOfUse() >= 1 || completedTasksCount >= 5;
+  const isTrialEnded = getDaysOfUse() >= 1;
 
   // Listen to Stripe payment success redirect URL params
   useEffect(() => {
@@ -299,7 +300,19 @@ export default function App() {
   };
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<'tasks' | 'stats' | 'coach' | 'achievements' | 'journal'>('tasks');
+  const [activeMainTab, setActiveMainTab] = useState<'tasks' | 'stats' | 'coach' | 'achievements' | 'journal' | 'payment'>('tasks');
+  const [blockedActionNotice, setBlockedActionNotice] = useState<string | null>(null);
+
+  const handleTabClick = (tab: 'tasks' | 'stats' | 'coach' | 'achievements' | 'journal' | 'payment') => {
+    playTypeSound();
+    if (!premium && isTrialEnded && tab !== 'payment') {
+      setBlockedActionNotice('🔒 PERÍODO DE TESTE EXPIRADO: Assine o FocusOS no Kiwify para liberar todas as abas.');
+      setActiveMainTab('payment');
+      return;
+    }
+    setBlockedActionNotice(null);
+    setActiveMainTab(tab);
+  };
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(isSoundEnabled());
@@ -442,12 +455,35 @@ export default function App() {
     trackFunctionUsed('tip');
   };
 
-  // Lock active tab to 'tasks' when in Zen Mode
+  // Redirect to 'payment' tab if trial has ended and user is not premium
+  useEffect(() => {
+    if (!premium && isTrialEnded && activeMainTab !== 'payment') {
+      setActiveMainTab('payment');
+    }
+  }, [premium, isTrialEnded]);
+
   useEffect(() => {
     if (zenMode) {
       setActiveMainTab('tasks');
     }
   }, [zenMode]);
+
+  const handlePaymentSuccess = (pType: string, buyerEmail?: string, token?: string) => {
+    setPremium(true);
+    setPlanType(pType);
+    localStorage.setItem('focus_quest_premium', 'true');
+    localStorage.setItem('focus_quest_plan_type', pType);
+    if (buyerEmail) {
+      setSession(prev => ({
+        email: buyerEmail,
+        token: token || prev?.token || 'premium_session'
+      }));
+    }
+    setShowPremiumModal(false);
+    setActiveMainTab('tasks');
+    setBlockedActionNotice(null);
+    playLevelUpSound();
+  };
 
   // Lock body scroll and set viewport styling when Cloud Conflict Resolver Modal is active
   useEffect(() => {
@@ -563,11 +599,21 @@ export default function App() {
     estimatedFocusPomodoros: number,
     priority?: any
   ) => {
+    if (!premium && isTrialEnded) {
+      setBlockedActionNotice('🔒 PERÍODO DE TESTE EXPIRADO: Assine o FocusOS no Kiwify para criar novas missões.');
+      setActiveMainTab('payment');
+      return null;
+    }
     trackFunctionUsed('task');
     return addTask(title, description, difficulty, category, estimatedFocusPomodoros || 1, priority || 'medium');
   };
 
   const handleAddJournalEntryWrapper = (mood: string, notes: string) => {
+    if (!premium && isTrialEnded) {
+      setBlockedActionNotice('🔒 PERÍODO DE TESTE EXPIRADO: Assine o FocusOS no Kiwify para criar entradas no diário.');
+      setActiveMainTab('payment');
+      return;
+    }
     trackFunctionUsed('journal');
     return addJournalEntry(mood, notes);
   };
@@ -998,7 +1044,7 @@ export default function App() {
           <div className="w-full flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
             <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
               <button
-                onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
+                onClick={() => handleTabClick('tasks')}
                 className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'tasks'
                     ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
@@ -1010,7 +1056,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
+                onClick={() => handleTabClick('stats')}
                 className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'stats'
                     ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
@@ -1022,7 +1068,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
+                onClick={() => handleTabClick('coach')}
                 className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'coach'
                     ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
@@ -1034,7 +1080,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
+                onClick={() => handleTabClick('achievements')}
                 className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'achievements'
                     ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
@@ -1046,7 +1092,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
+                onClick={() => handleTabClick('journal')}
                 className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'journal'
                     ? 'bg-orange-950/60 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
@@ -1055,6 +1101,37 @@ export default function App() {
               >
                 <BookOpen className="w-3.5 h-3.5 text-orange-400" />
                 <span>Diário</span>
+              </button>
+
+              {/* Status do Pagamento Tab */}
+              <button
+                onClick={() => handleTabClick('payment')}
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+                  activeMainTab === 'payment'
+                    ? 'bg-orange-950/80 text-orange-400 border border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)] font-extrabold'
+                    : !premium && isTrialEnded
+                    ? 'text-orange-400 bg-orange-950/40 border border-orange-500/40 hover:bg-orange-900/50 animate-pulse'
+                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
+                }`}
+              >
+                {premium ? (
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                ) : isTrialEnded ? (
+                  <Lock className="w-3.5 h-3.5 text-orange-400" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                )}
+                <span>Pagamento</span>
+                {!premium && !isTrialEnded && (
+                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[8px] font-mono px-1.5 py-0.2 rounded-full font-bold uppercase">
+                    1 Dia Grátis
+                  </span>
+                )}
+                {!premium && isTrialEnded && (
+                  <span className="bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[8px] font-mono px-1.5 py-0.2 rounded-full font-bold uppercase">
+                    Expirado
+                  </span>
+                )}
               </button>
             </div>
 
@@ -1070,6 +1147,26 @@ export default function App() {
         </nav>
       )}
 
+      {/* Persistent Warning Banner when !premium AND isTrialEnded */}
+      {!premium && isTrialEnded && !zenMode && (
+        <div className="bg-gradient-to-r from-orange-950/90 via-zinc-950 to-orange-950/90 border-b border-orange-500/40 text-white px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in z-30">
+          <div className="flex items-center space-x-3">
+            <div className="p-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 shrink-0">
+              <Lock className="w-4 h-4 animate-bounce text-orange-400" />
+            </div>
+            <p className="text-xs font-semibold text-zinc-200 font-sans">
+              <strong>🔒 TESTE GRÁTIS EXPIRADO:</strong> Seu período de 1 dia de teste terminou. Adquira a assinatura do FocusOS na Kiwify para continuar.
+            </p>
+          </div>
+          <button
+            onClick={() => handleTabClick('payment')}
+            className="bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-zinc-950 font-black text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-xl border border-orange-400 transition-all cursor-pointer shrink-0 font-mono shadow-md active:scale-95"
+          >
+            Assinar Agora
+          </button>
+        </div>
+      )}
+
       {/* Daily Focus Tip Message */}
       {!zenMode && (
         <DailyTip 
@@ -1081,64 +1178,69 @@ export default function App() {
 
       {/* Mobile Sticky Bottom HUD Navigation */}
       {!zenMode && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 border-t border-zinc-900 backdrop-blur-md px-2 py-2 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.8)] pb-safe">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 border-t border-zinc-900 backdrop-blur-md px-1.5 py-2 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.8)] pb-safe">
           <button
-            onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            onClick={() => handleTabClick('tasks')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
               activeMainTab === 'tasks' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
-            <CheckSquare className="w-5 h-5 mb-1" />
-            <span className="text-[9px] uppercase tracking-wider">Missões</span>
+            <CheckSquare className="w-4 h-4 mb-0.5" />
+            <span className="text-[8px] uppercase tracking-wider">Missões</span>
           </button>
 
           <button
-            onClick={() => { setActiveMainTab('stats'); playTypeSound(); }}
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            onClick={() => handleTabClick('stats')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
               activeMainTab === 'stats' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
-            <BarChart2 className="w-5 h-5 mb-1" />
-            <span className="text-[9px] uppercase tracking-wider">Gráficos</span>
+            <BarChart2 className="w-4 h-4 mb-0.5" />
+            <span className="text-[8px] uppercase tracking-wider">Gráficos</span>
           </button>
 
           <button
-            onClick={() => { setActiveMainTab('coach'); playTypeSound(); }}
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            onClick={() => handleTabClick('coach')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
               activeMainTab === 'coach' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
-            <Brain className="w-5 h-5 mb-1" />
-            <span className="text-[9px] uppercase tracking-wider">Mente IA</span>
+            <Brain className="w-4 h-4 mb-0.5" />
+            <span className="text-[8px] uppercase tracking-wider">Mente</span>
           </button>
 
           <button
-            onClick={() => { setActiveMainTab('achievements'); playTypeSound(); }}
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            onClick={() => handleTabClick('achievements')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
               activeMainTab === 'achievements' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
-            <Trophy className="w-5 h-5 mb-1" />
-            <span className="text-[9px] uppercase tracking-wider">Troféus</span>
+            <Trophy className="w-4 h-4 mb-0.5" />
+            <span className="text-[8px] uppercase tracking-wider">Troféus</span>
           </button>
 
           <button
-            onClick={() => { setActiveMainTab('journal'); playTypeSound(); }}
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer ${
+            onClick={() => handleTabClick('journal')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
               activeMainTab === 'journal' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
             }`}
           >
-            <BookOpen className="w-5 h-5 mb-1" />
-            <span className="text-[9px] uppercase tracking-wider">Diário</span>
+            <BookOpen className="w-4 h-4 mb-0.5" />
+            <span className="text-[8px] uppercase tracking-wider">Diário</span>
           </button>
 
           <button
-            onClick={() => { setShowSettingsModal(true); playTypeSound(); }}
-            className="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer text-zinc-500 font-medium hover:text-zinc-300"
-            title="Configurações & Temas"
+            onClick={() => handleTabClick('payment')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
+              activeMainTab === 'payment'
+                ? 'text-orange-400 bg-orange-950/40 border border-orange-500/40 font-bold'
+                : !premium && isTrialEnded
+                ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold animate-pulse'
+                : 'text-zinc-500 font-medium hover:text-zinc-300'
+            }`}
           >
-            <Sliders className="w-5 h-5 mb-1 text-orange-400" />
-            <span className="text-[9px] uppercase tracking-wider">Ajustes</span>
+            {!premium && isTrialEnded ? <Lock className="w-4 h-4 mb-0.5 text-orange-400" /> : premium ? <ShieldCheck className="w-4 h-4 mb-0.5 text-emerald-400" /> : <Sparkles className="w-4 h-4 mb-0.5 text-amber-400" />}
+            <span className="text-[8px] uppercase tracking-wider font-bold">Pagar</span>
           </button>
         </div>
       )}
@@ -1284,6 +1386,19 @@ export default function App() {
                   currentFocusTaskTitle={activeTaskTitle}
                 />
               </div>
+            )}
+
+            {activeMainTab === 'payment' && (
+              <PaymentStatusTab
+                premium={premium}
+                planType={planType}
+                email={session?.email || ''}
+                isTrialEnded={isTrialEnded}
+                onPaymentSuccess={handlePaymentSuccess}
+                onGoToTasks={() => {
+                  setActiveMainTab('tasks');
+                }}
+              />
             )}
           </motion.div>
         </AnimatePresence>
@@ -1649,7 +1764,7 @@ export default function App() {
 
       {/* Premium presentation & checkout dialog modal */}
       <PremiumModal
-        isOpen={showPremiumModal || (!premium && isTrialEnded)}
+        isOpen={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}
         email={session?.email || 'usuario.teste@focusquest.com'}
         stats={{
@@ -1661,7 +1776,7 @@ export default function App() {
         totalFunctionsCount={5} // Total active functions: sound, filter, zen, task, journal
         daysOfUse={getDaysOfUse()}
         completedTasksCount={completedTasksCount}
-        canClose={!(isTrialEnded && !premium)}
+        canClose={true}
         onPaymentSuccess={(type, buyerEmail, token) => {
           setPremium(true);
           setPlanType(type);

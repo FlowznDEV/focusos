@@ -1,14 +1,11 @@
-import React, { useRef, useState } from 'react';
-import { X, Palette, Volume2, VolumeX, Moon, Sun, Shield, Sparkles, Check, RefreshCw, Leaf, Sliders, Download, Upload, Database, HardDrive, Clock, CheckCircle2, FileJson } from 'lucide-react';
-import { AccentTheme, THEME_OPTIONS } from '../utils/theme';
+import React from 'react';
+import { X, Volume2, VolumeX, Moon, Sun, Shield, Sparkles, RefreshCw, Leaf, Sliders } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  accentTheme: AccentTheme;
-  onSelectTheme: (theme: AccentTheme) => void;
-  isNight: boolean;
-  onToggleNight: () => void;
+  isNight?: boolean;
+  onToggleNight?: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
   zenMode: boolean;
@@ -18,18 +15,11 @@ interface SettingsModalProps {
   completedTasksCount?: number;
   onOpenPremiumModal: () => void;
   onResetJourney: () => void;
-  onExportBackup?: () => void;
-  onRestoreBackupFile?: (file: File) => void;
-  lastAutoBackupTimestamp?: number | null;
 }
 
 export default function SettingsModal({
   isOpen,
   onClose,
-  accentTheme,
-  onSelectTheme,
-  isNight,
-  onToggleNight,
   soundEnabled,
   onToggleSound,
   zenMode,
@@ -39,39 +29,14 @@ export default function SettingsModal({
   completedTasksCount = 0,
   onOpenPremiumModal,
   onResetJourney,
-  onExportBackup,
-  onRestoreBackupFile,
-  lastAutoBackupTimestamp,
 }: SettingsModalProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
-
   if (!isOpen) return null;
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (onRestoreBackupFile) {
-        onRestoreBackupFile(file);
-        setRestoreMessage(`Arquivo "${file.name}" carregado para restauração!`);
-        setTimeout(() => setRestoreMessage(null), 4000);
-      }
-    }
-    // reset input
-    if (e.target) e.target.value = '';
-  };
-
-  const formatBackupDate = (ts?: number | null) => {
-    if (!ts) return 'Pendente (Será gerado a cada 24h)';
-    const d = new Date(ts);
-    return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-  };
 
   return (
     <div className="fixed inset-0 bg-zinc-950/90 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
       <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl relative flex flex-col my-auto max-h-[84vh] overflow-hidden animate-pop-in">
         {/* Top Glow Bar */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-500 via-cyan-400 to-purple-500" />
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500" />
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-900 pb-4 mb-5 shrink-0">
@@ -83,8 +48,8 @@ export default function SettingsModal({
               <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-widest block">
                 // CONFIGURAÇÕES DO SISTEMA
               </span>
-              <h3 className="text-base font-black text-white uppercase tracking-tight">
-                Personalizar HUD & Preferências
+              <h3 className="text-base font-black text-white uppercase tracking-tight font-sans">
+                Ajustes & Preferências
               </h3>
             </div>
           </div>
@@ -99,92 +64,14 @@ export default function SettingsModal({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto space-y-6 pr-1">
-          {/* SECTION 1: SELETOR DE TEMAS (CORES DE DESTAQUE) */}
+          {/* SECTION 1: MODO NOTURNO & SOM */}
           <div>
-            <div className="flex items-center space-x-2 mb-3">
-              <Palette className="w-4 h-4 text-orange-400" />
-              <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider font-mono">
-                Cor de Destaque do HUD
-              </h4>
-            </div>
-            <p className="text-xs text-zinc-400 mb-3.5">
-              Escolha o tema de iluminação neon para transformar o visual de todas as telas e painéis do aplicativo.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {THEME_OPTIONS.map((theme) => {
-                const isSelected = accentTheme === theme.id;
-                return (
-                  <button
-                    key={theme.id}
-                    onClick={() => onSelectTheme(theme.id)}
-                    className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer relative overflow-hidden group ${
-                      isSelected
-                        ? `${theme.badgeClass} ring-1 ring-white/20 shadow-lg`
-                        : 'bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      {/* Theme Preview Color Swatch Circle */}
-                      <div
-                        className="w-7 h-7 rounded-full shrink-0 border border-white/20 flex items-center justify-center shadow-md transition-transform group-hover:scale-110"
-                        style={{ backgroundColor: theme.previewHex }}
-                      >
-                        {isSelected && <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />}
-                      </div>
-
-                      <div>
-                        <span className="text-xs font-black text-white block uppercase tracking-tight">
-                          {theme.name}
-                        </span>
-                        <span className="text-[10px] text-zinc-400 block font-mono">
-                          {theme.tagline}
-                        </span>
-                      </div>
-                    </div>
-
-                    {isSelected && (
-                      <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/10 uppercase tracking-widest text-white border border-white/20 shrink-0">
-                        Ativo
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* SECTION 2: MODO NOTURNO & SOM */}
-          <div className="border-t border-zinc-900 pt-5">
             <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider font-mono mb-3.5 flex items-center space-x-2">
               <Sun className="w-4 h-4 text-amber-400" />
               <span>Visual & Áudio</span>
             </h4>
 
             <div className="space-y-2.5">
-              {/* Day/Night Filter */}
-              <div className="bg-zinc-900/40 border border-zinc-850 p-3.5 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-xl border ${isNight ? 'bg-indigo-950/40 border-indigo-500/30 text-indigo-400' : 'bg-amber-950/40 border-amber-500/30 text-amber-400'}`}>
-                    {isNight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block">Filtro Noturno de Tela</span>
-                    <span className="text-[10px] text-zinc-400 font-mono">Ajusta o contraste para descanso ocular</span>
-                  </div>
-                </div>
-                <button
-                  onClick={onToggleNight}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono uppercase tracking-wider border transition-all cursor-pointer ${
-                    isNight
-                      ? 'bg-indigo-600 text-white border-indigo-400'
-                      : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
-                  }`}
-                >
-                  {isNight ? 'Ativado' : 'Desativado'}
-                </button>
-              </div>
-
               {/* Sound Effects Toggle */}
               <div className="bg-zinc-900/40 border border-zinc-850 p-3.5 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -233,7 +120,7 @@ export default function SettingsModal({
             </div>
           </div>
 
-          {/* SECTION 3: PLANO & PERÍODO DE TESTE */}
+          {/* SECTION 2: PLANO & PERÍODO DE TESTE */}
           <div className="border-t border-zinc-900 pt-5">
             <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider font-mono mb-3.5 flex items-center space-x-2">
               <Shield className="w-4 h-4 text-orange-400" />
@@ -251,7 +138,7 @@ export default function SettingsModal({
                       {premium ? 'Plano Premium Ativo' : 'Período Gratuito de Teste'}
                     </span>
                     <span className="text-[10px] text-zinc-400 font-mono">
-                      Dias: {daysOfUse} | Tarefas concluídas: {completedTasksCount}/5
+                      Dias de uso: {daysOfUse}
                     </span>
                   </div>
                 </div>
@@ -268,91 +155,10 @@ export default function SettingsModal({
                   </button>
                 )}
               </div>
-
-              {!premium && (daysOfUse >= 1 || completedTasksCount >= 5) && (
-                <div className="bg-amber-950/40 border border-amber-500/40 p-2.5 rounded-xl text-[10.5px] text-amber-200 font-mono flex items-center space-x-2">
-                  <span className="text-amber-400 font-bold shrink-0">⚠️</span>
-                  <span>O teste grátis terminou (1 dia de uso ou 5 tarefas concluídas). Assine o Premium para acesso ilimitado.</span>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* SECTION 4: BACKUP AUTOMÁTICO 24H E RESTAURAÇÃO */}
-          <div className="border-t border-zinc-900 pt-5">
-            <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider font-mono mb-3.5 flex items-center space-x-2">
-              <Database className="w-4 h-4 text-cyan-400" />
-              <span>Backup do Sistema & Restauração</span>
-            </h4>
-
-            <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-2xl space-y-3.5">
-              {/* Auto backup status */}
-              <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-                <div className="flex items-center space-x-2.5">
-                  <div className="p-2 bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 rounded-xl">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block">
-                      Backup Automático (A cada 24 horas)
-                    </span>
-                    <span className="text-[10px] text-zinc-400 font-mono block">
-                      Último download: <span className="text-cyan-300 font-semibold">{formatBackupDate(lastAutoBackupTimestamp)}</span>
-                    </span>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[9px] font-mono font-bold uppercase tracking-wider shrink-0">
-                  Ativo 24h
-                </span>
-              </div>
-
-              {/* Restore message feedback */}
-              {restoreMessage && (
-                <div className="bg-emerald-950/40 border border-emerald-500/40 p-2.5 rounded-xl text-[11px] text-emerald-300 font-mono flex items-center space-x-2 animate-fadeIn">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{restoreMessage}</span>
-                </div>
-              )}
-
-              {/* Action Buttons: Export Manual & Restore File */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
-                {/* Manual Export Download Button */}
-                <button
-                  type="button"
-                  onClick={() => onExportBackup && onExportBackup()}
-                  className="bg-zinc-850 hover:bg-zinc-800 border border-zinc-700 hover:border-cyan-500/50 text-white font-bold text-[10.5px] p-2.5 rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer group"
-                >
-                  <Download className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
-                  <span>Exportar JSON Agora</span>
-                </button>
-
-                {/* Manual Restore Upload Button */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/40 hover:border-cyan-400 text-cyan-200 font-bold text-[10.5px] p-2.5 rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer group"
-                >
-                  <Upload className="w-3.5 h-3.5 text-cyan-400 group-hover:-translate-y-0.5 transition-transform" />
-                  <span>Restaurar de JSON</span>
-                </button>
-
-                {/* Hidden File Input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json,application/json"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </div>
-
-              <p className="text-[10px] text-zinc-500 font-mono leading-relaxed pt-1">
-                💡 O sistema exporta e baixa automaticamente uma cópia em JSON de todas as suas tarefas, níveis, conquistas e diário a cada 24h. Em caso de troca de dispositivo ou limpeza de navegador, use "Restaurar de JSON" para recuperar 100% do seu progresso.
-              </p>
-            </div>
-          </div>
-
-          {/* SECTION 5: RESET JOURNEY */}
+          {/* SECTION 3: RESET JOURNEY */}
           <div className="border-t border-zinc-900 pt-5 pb-2">
             <div className="flex items-center justify-between">
               <div>

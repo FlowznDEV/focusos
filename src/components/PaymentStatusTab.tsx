@@ -106,13 +106,13 @@ export default function PaymentStatusTab({
         premium 
           ? 'bg-gradient-to-r from-emerald-950/80 via-zinc-900 to-emerald-950/80 border-emerald-500/50 shadow-emerald-500/10' 
           : !isTrialEnded
-          ? 'bg-gradient-to-r from-amber-950/50 via-zinc-900 to-orange-950/50 border-orange-500/40 shadow-orange-500/10'
-          : 'bg-gradient-to-r from-orange-950/80 via-zinc-950 to-orange-950/80 border-orange-500/50 shadow-orange-500/15'
+          ? 'bg-gradient-to-r from-pink-950/50 via-zinc-900 to-rose-950/50 border-pink-500/40 shadow-pink-500/10'
+          : 'bg-gradient-to-r from-pink-950/80 via-zinc-950 to-rose-950/80 border-pink-500/50 shadow-pink-500/15'
       }`}>
         <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${
           premium 
             ? 'from-emerald-500 via-teal-400 to-emerald-500' 
-            : 'from-orange-500 via-amber-400 to-orange-500'
+            : 'from-pink-500 via-rose-400 to-pink-500'
         }`} />
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -120,14 +120,14 @@ export default function PaymentStatusTab({
             <div className={`p-4 rounded-2xl border shrink-0 ${
               premium 
                 ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' 
-                : 'bg-orange-500/20 border-orange-500/40 text-orange-400'
+                : 'bg-pink-500/20 border-pink-500/40 text-pink-400'
             }`}>
               {premium ? (
                 <ShieldCheck className="w-8 h-8 text-emerald-400" />
               ) : !isTrialEnded ? (
-                <Sparkles className="w-8 h-8 animate-pulse text-amber-400" />
+                <Sparkles className="w-8 h-8 animate-pulse text-pink-400" />
               ) : (
-                <Lock className="w-8 h-8 animate-bounce text-orange-400" />
+                <Lock className="w-8 h-8 animate-bounce text-pink-400" />
               )}
             </div>
 
@@ -137,8 +137,8 @@ export default function PaymentStatusTab({
                   premium 
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
                     : !isTrialEnded
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+                    ? 'bg-pink-500/20 text-pink-300 border-pink-500/40'
+                    : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
                 }`}>
                   {premium 
                     ? 'STATUS: PAGO & ATIVO' 
@@ -147,7 +147,7 @@ export default function PaymentStatusTab({
                     : 'STATUS: PERÍODO DE TESTE EXPIRADO'}
                 </span>
                 {planType && (
-                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase">
+                  <span className="bg-pink-500/20 text-pink-300 border border-pink-500/30 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase">
                     Plano {planType === 'monthly' ? 'Mensal' : 'Anual'}
                   </span>
                 )}
@@ -176,7 +176,7 @@ export default function PaymentStatusTab({
           {(premium || !isTrialEnded) && onGoToTasks && (
             <button
               onClick={() => { playTypeSound(); onGoToTasks(); }}
-              className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black px-6 py-3.5 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-orange-500/20 flex items-center space-x-2 shrink-0 cursor-pointer active:scale-95"
+              className="bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-black px-6 py-3.5 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-pink-500/20 flex items-center space-x-2 shrink-0 cursor-pointer active:scale-95"
             >
               <span>Acessar Painel de Foco</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />
@@ -189,11 +189,11 @@ export default function PaymentStatusTab({
       <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
         <div className="flex items-center justify-between border-b border-zinc-900 pb-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400">
-              <Crown className="w-6 h-6 text-amber-400 animate-pulse" />
+            <div className="p-2.5 rounded-xl bg-pink-500/10 border border-pink-500/30 text-pink-400">
+              <Crown className="w-6 h-6 text-rose-400 animate-pulse" />
             </div>
             <div>
-              <span className="text-[9px] font-mono font-bold text-orange-400 uppercase tracking-widest block">
+              <span className="text-[9px] font-mono font-bold text-pink-400 uppercase tracking-widest block">
                 // PLANOS OFICIAIS
               </span>
               <h3 className="text-lg font-black text-white uppercase tracking-tight">
@@ -225,15 +225,15 @@ export default function PaymentStatusTab({
               </p>
               <ul className="space-y-2 text-xs text-zinc-300 font-sans pt-2">
                 <li className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-orange-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-400 shrink-0" />
                   <span>Acesso completo a todas as funções</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-orange-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-400 shrink-0" />
                   <span>Treinador IA Gemini sem limites</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-orange-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-400 shrink-0" />
                   <span>Sincronização em nuvem e backup local</span>
                 </li>
               </ul>
@@ -244,25 +244,25 @@ export default function PaymentStatusTab({
               onClick={() => handleOpenKiwifyCheckout('monthly')}
               className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white font-bold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-md active:scale-95"
             >
-              <ExternalLink className="w-4 h-4 text-orange-400" />
+              <ExternalLink className="w-4 h-4 text-pink-400" />
               <span>Pagar R$ 27,90 no Kiwify</span>
             </button>
           </div>
 
           {/* PLAN 2: ANUAL (BEST VALUE) */}
-          <div className="bg-gradient-to-b from-orange-950/40 via-zinc-900/90 to-zinc-950 border-2 border-orange-500/80 p-6 rounded-3xl space-y-4 shadow-[0_0_25px_rgba(249,115,22,0.2)] relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute top-0 right-0 bg-gradient-to-l from-orange-500 to-amber-500 text-zinc-950 text-[9px] font-black px-3 py-1 uppercase rounded-bl-2xl font-mono shadow-md">
+          <div className="bg-gradient-to-b from-pink-950/40 via-zinc-900/90 to-zinc-950 border-2 border-pink-500/80 p-6 rounded-3xl space-y-4 shadow-[0_0_25px_rgba(236,72,153,0.2)] relative overflow-hidden flex flex-col justify-between">
+            <div className="absolute top-0 right-0 bg-gradient-to-l from-pink-500 to-rose-500 text-white text-[9px] font-black px-3 py-1 uppercase rounded-bl-2xl font-mono shadow-md">
               🔥 60% OFF - Recomendado
             </div>
 
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[10px] font-mono text-orange-400 uppercase font-bold block">Melhor Oferta VIP</span>
+                  <span className="text-[10px] font-mono text-pink-400 uppercase font-bold block">Melhor Oferta VIP</span>
                   <h4 className="text-lg font-black text-white">FocusOS Anual</h4>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl font-black text-white font-mono block">R$ 107,00<span className="text-xs text-orange-400 font-bold">/ano</span></span>
+                  <span className="text-2xl font-black text-white font-mono block">R$ 107,00<span className="text-xs text-pink-400 font-bold">/ano</span></span>
                   <span className="text-[10px] text-emerald-400 font-mono font-bold">Equivale a R$ 8,91/mês</span>
                 </div>
               </div>
@@ -273,15 +273,15 @@ export default function PaymentStatusTab({
 
               <ul className="space-y-2 text-xs text-zinc-200 font-sans pt-2">
                 <li className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-orange-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-400 shrink-0" />
                   <span>Acesso ilimitado de 12 meses consecutivos</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-orange-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-400 shrink-0" />
                   <span>Atualizações prioritárias e suporte VIP</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-orange-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-400 shrink-0" />
                   <span>Economia de 60% no valor acumulado</span>
                 </li>
               </ul>
@@ -290,7 +290,7 @@ export default function PaymentStatusTab({
             <button
               type="button"
               onClick={() => handleOpenKiwifyCheckout('lifetime')}
-              className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black py-4 px-6 rounded-2xl text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-orange-500/30 active:scale-95"
+              className="w-full bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-black py-4 px-6 rounded-2xl text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-pink-500/30 active:scale-95"
             >
               <Sparkles className="w-4 h-4 text-white animate-pulse" />
               <span>Garantir Plano Anual no Kiwify</span>
@@ -301,19 +301,19 @@ export default function PaymentStatusTab({
         {/* TRUST BADGE */}
         <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-zinc-400 gap-3">
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-5 h-5 text-orange-400 shrink-0" />
+            <ShieldCheck className="w-5 h-5 text-pink-400 shrink-0" />
             <span>Garantia Incondicional de 7 Dias: Se não gostar, receba 100% do valor de volta.</span>
           </div>
-          <span className="text-orange-400 font-bold shrink-0">Kiwify Verified</span>
+          <span className="text-pink-400 font-bold shrink-0">Kiwify Verified</span>
         </div>
       </div>
 
       {/* HOW IT WORKS / PASSO A PASSO DE PAGAMENTO E LIBERAÇÃO */}
-      <div className="bg-zinc-950 border border-orange-500/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-orange-500 via-amber-500 to-orange-600" />
+      <div className="bg-zinc-950 border border-pink-500/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-pink-500 via-rose-500 to-fuchsia-600" />
         
         <div>
-          <span className="text-[9px] font-mono font-bold text-orange-400 uppercase tracking-widest block">
+          <span className="text-[9px] font-mono font-bold text-pink-400 uppercase tracking-widest block">
             // GUIA PASSO A PASSO
           </span>
           <h3 className="text-lg font-black text-white uppercase tracking-tight">
@@ -328,20 +328,20 @@ export default function PaymentStatusTab({
           {/* PASSO 1 */}
           <div className="bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl space-y-2 relative">
             <div className="flex items-center space-x-2">
-              <span className="w-6 h-6 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-400 font-mono text-xs font-black flex items-center justify-center shrink-0">
+              <span className="w-6 h-6 rounded-lg bg-pink-500/20 border border-pink-500/40 text-pink-400 font-mono text-xs font-black flex items-center justify-center shrink-0">
                 1
               </span>
               <h4 className="font-extrabold text-white text-xs uppercase">Escolha o Plano no Kiwify</h4>
             </div>
             <p className="text-[11px] text-zinc-400 leading-relaxed font-sans">
-              Clique no botão do plano desejado (<strong className="text-zinc-200">Mensal R$ 27,90</strong> ou <strong className="text-orange-400">Anual R$ 107,00</strong>). Você será redirecionado para a página segura de checkout da <strong className="text-white">Kiwify</strong>.
+              Clique no botão do plano desejado (<strong className="text-zinc-200">Mensal R$ 27,90</strong> ou <strong className="text-pink-400">Anual R$ 107,00</strong>). Você será redirecionado para a página segura de checkout da <strong className="text-white">Kiwify</strong>.
             </p>
           </div>
 
           {/* PASSO 2 */}
           <div className="bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl space-y-2 relative">
             <div className="flex items-center space-x-2">
-              <span className="w-6 h-6 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-400 font-mono text-xs font-black flex items-center justify-center shrink-0">
+              <span className="w-6 h-6 rounded-lg bg-pink-500/20 border border-pink-500/40 text-pink-400 font-mono text-xs font-black flex items-center justify-center shrink-0">
                 2
               </span>
               <h4 className="font-extrabold text-white text-xs uppercase">Pague por Pix ou Cartão</h4>
@@ -370,14 +370,14 @@ export default function PaymentStatusTab({
       <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-6 sm:p-8 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-[9px] font-mono font-bold text-orange-400 uppercase tracking-widest block">
+            <span className="text-[9px] font-mono font-bold text-pink-400 uppercase tracking-widest block">
               // RECURSOS DA ASSINATURA
             </span>
             <h3 className="text-base font-black text-white uppercase tracking-tight">
               O que você libera ao assinar o FocusOS:
             </h3>
           </div>
-          <span className="px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 font-mono text-[10px] font-bold">
+          <span className="px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-400 font-mono text-[10px] font-bold">
             10 Módulos Completos
           </span>
         </div>
@@ -388,9 +388,9 @@ export default function PaymentStatusTab({
             return (
               <div 
                 key={idx}
-                className="bg-zinc-900/40 border border-zinc-800/80 p-3.5 rounded-2xl flex items-start space-x-3 hover:border-orange-500/30 transition-all"
+                className="bg-zinc-900/40 border border-zinc-800/80 p-3.5 rounded-2xl flex items-start space-x-3 hover:border-pink-500/30 transition-all"
               >
-                <div className="p-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 shrink-0">
+                <div className="p-2 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-400 shrink-0">
                   <IconComp className="w-4 h-4" />
                 </div>
                 <div className="space-y-0.5">

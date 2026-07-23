@@ -234,10 +234,10 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
     <div id="stats-dashboard-container" className="space-y-6">
       
       {/* Top Header Action Bar with Report Download */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/40 border border-zinc-800/60 p-4 sm:p-5 rounded-3xl animate-slide-up">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-950 border border-pink-500/30 bg-gradient-to-r from-pink-950/30 via-zinc-950 to-pink-950/30 p-4 sm:p-5 rounded-3xl animate-slide-up">
         <div className="flex items-center space-x-3.5">
-          <div className="bg-orange-500/10 border border-orange-500/30 p-2.5 rounded-2xl text-orange-400 shrink-0">
-            <FileText className="w-5 h-5 text-orange-400" />
+          <div className="bg-pink-500/10 border border-pink-500/30 p-2.5 rounded-2xl text-pink-400 shrink-0">
+            <FileText className="w-5 h-5 text-pink-400" />
           </div>
           <div>
             <h3 className="text-sm font-black text-white uppercase tracking-tight">Painel de Desempenho</h3>
@@ -248,7 +248,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
         <button
           id="download-monthly-report-btn"
           onClick={handleDownloadMonthlyReport}
-          className="flex items-center justify-center space-x-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-black px-4 py-2.5 rounded-2xl transition-all shadow-lg shadow-orange-600/20 active:scale-95 cursor-pointer shrink-0 uppercase tracking-wider font-mono animate-pop-in"
+          className="flex items-center justify-center space-x-2 bg-pink-600 hover:bg-pink-500 text-white text-xs font-black px-4 py-2.5 rounded-2xl transition-all shadow-lg shadow-pink-600/20 active:scale-95 cursor-pointer shrink-0 uppercase tracking-wider font-mono animate-pop-in"
           title="Baixar resumo em JSON com horas de foco e tarefas do mês"
         >
           <Download className="w-4 h-4" />
@@ -265,8 +265,8 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up-delay-1">
         
         {/* Metric 1: Nível */}
-        <div id="metric-level-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-2xl flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300 shadow-sm min-h-[140px]">
-          <div className="bg-indigo-950/40 border border-indigo-900/40 text-indigo-400 p-2.5 rounded-xl mb-2 shrink-0">
+        <div id="metric-level-card" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-2xl flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-pink-500/50 transition-all duration-300 shadow-sm min-h-[140px]">
+          <div className="bg-pink-950/40 border border-pink-500/30 text-pink-400 p-2.5 rounded-xl mb-2 shrink-0">
             <Award className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </div>
           <div className="flex flex-col items-center justify-center">
@@ -276,14 +276,14 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
               <span className="text-xs text-zinc-500">/ 15</span>
             </div>
           </div>
-          <div className="absolute top-2 right-2 bg-indigo-950/80 border border-indigo-900/50 text-[10px] font-bold text-indigo-400 px-1.5 py-0.5 rounded-sm">
+          <div className="absolute top-2 right-2 bg-pink-950/80 border border-pink-500/30 text-[10px] font-bold text-pink-300 px-1.5 py-0.5 rounded-sm">
             {Math.round(xpProgressPercent)}%
           </div>
         </div>
 
         {/* Metric 2: Sequência */}
-        <div id="metric-streak-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-2xl flex flex-col items-center justify-center text-center hover:border-amber-500/40 transition-all duration-300 shadow-sm min-h-[140px]">
-          <div className="bg-amber-950/40 border border-amber-900/40 text-amber-400 p-2.5 rounded-xl mb-2 shrink-0">
+        <div id="metric-streak-card" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-2xl flex flex-col items-center justify-center text-center hover:border-pink-500/50 transition-all duration-300 shadow-sm min-h-[140px]">
+          <div className="bg-rose-950/40 border border-rose-900/40 text-rose-400 p-2.5 rounded-xl mb-2 shrink-0">
             <Zap className="w-5 h-5 animate-bounce" />
           </div>
           <div className="flex flex-col items-center justify-center">
@@ -293,7 +293,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
         </div>
 
         {/* Metric 3: Tarefas Concluídas */}
-        <div id="metric-tasks-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-2xl flex flex-col items-center justify-center text-center hover:border-emerald-500/40 transition-all duration-300 shadow-sm min-h-[140px]">
+        <div id="metric-tasks-card" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-2xl flex flex-col items-center justify-center text-center hover:border-emerald-500/40 transition-all duration-300 shadow-sm min-h-[140px]">
           <div className="bg-emerald-950/40 border border-emerald-900/40 text-emerald-400 p-2.5 rounded-xl mb-2 shrink-0">
             <CheckSquare className="w-5 h-5" />
           </div>
@@ -304,7 +304,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
         </div>
 
         {/* Metric 4: Horas de Foco */}
-        <div id="metric-focus-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-2xl flex flex-col items-center justify-center text-center hover:border-pink-500/40 transition-all duration-300 shadow-sm min-h-[140px]">
+        <div id="metric-focus-card" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-2xl flex flex-col items-center justify-center text-center hover:border-pink-500/50 transition-all duration-300 shadow-sm min-h-[140px]">
           <div className="bg-pink-950/40 border border-pink-900/40 text-pink-400 p-2.5 rounded-xl mb-2 shrink-0">
             <Clock className="w-5 h-5" />
           </div>
@@ -319,7 +319,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Chart: Quantidade de Tarefas Concluídas nos Últimos 7 Dias */}
-        <div id="weekly-completed-tasks-bar-chart-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
+        <div id="weekly-completed-tasks-bar-chart-card" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
               <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
@@ -370,11 +370,11 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
           </div>
         </div>
         
-        {/* Chart 1: Histórico de Evolução de XP */}
-        <div id="xp-trend-chart-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs">
+        {/* Chart 1: Histórico de Evolução de XP (Trajetória Recente de XP) */}
+        <div id="xp-trend-chart-card" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
+              <Sparkles className="w-4 h-4 text-pink-400" />
               <span>Trajetória Recente de XP</span>
             </h4>
             <p className="text-[11px] text-zinc-500 mt-0.5">Pontos de experiência acumulados ao longo das últimas ações de foco</p>
@@ -390,59 +390,27 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
                 <AreaChart data={recentXPTrend} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorXP" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.01}/>
+                      <stop offset="5%" stopColor="#ec4899" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#ec4899" stopOpacity={0.01}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
                   <XAxis dataKey="index" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
                   <Tooltip
-                    contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '12px', fontSize: '11px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', color: '#fff' }}
+                    contentStyle={{ background: '#09090b', border: '1px solid #ec4899', borderRadius: '12px', fontSize: '11px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', color: '#fff' }}
                     labelFormatter={(label) => `Ação #${label}`}
                   />
-                  <Area type="monotone" dataKey="Acumulado" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorXP)" name="XP Acumulado" />
-                  <Area type="monotone" dataKey="Ganho" stroke="#10b981" strokeWidth={1.5} fillOpacity={0} name="Ganho na Ação" />
+                  <Area type="monotone" dataKey="Acumulado" stroke="#ec4899" strokeWidth={2} fillOpacity={1} fill="url(#colorXP)" name="XP Acumulado" />
+                  <Area type="monotone" dataKey="Ganho" stroke="#f43f5e" strokeWidth={1.5} fillOpacity={0} name="Ganho na Ação" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
 
-        {/* Chart 2: Distribuição de Tarefas por Categorias */}
-        <div id="category-tasks-chart-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs">
-          <div className="mb-4">
-            <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
-              <CheckSquare className="w-4 h-4 text-emerald-400" />
-              <span>Balanço de Categorias</span>
-            </h4>
-            <p className="text-[11px] text-zinc-500 mt-0.5">Distribuição de tarefas entre pendentes e concluídas por área da vida</p>
-          </div>
-
-          <div className="h-64 w-full">
-            {tasks.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-zinc-500">
-                Insira algumas tarefas na lista para visualizar a distribuição de áreas.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
-                  <Tooltip
-                    contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '12px', fontSize: '11px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', color: '#fff' }}
-                  />
-                  <Bar dataKey="Concluídas" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} name="Concluídas" />
-                  <Bar dataKey="Pendentes" stackId="a" fill="#27272a" radius={[4, 4, 0, 0]} name="Pendentes" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
         {/* Chart 3: Distribuição de Foco por Tags/Categorias (Gráfico de Pizza) */}
-        <div id="focus-distribution-pie-chart" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs">
+        <div id="focus-distribution-pie-chart" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
               <LucidePieChart className="w-4 h-4 text-pink-400" />
@@ -490,10 +458,10 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
         </div>
 
         {/* Chart 3: Desempenho dos Últimos 7 Dias (Tarefas Concluídas e XP Ganho) */}
-        <div id="weekly-performance-chart-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
+        <div id="weekly-performance-chart-card" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
-              <TrendingUp className="w-4 h-4 text-indigo-400" />
+              <TrendingUp className="w-4 h-4 text-pink-400" />
               <span>Desempenho Semanal (Últimos 7 Dias)</span>
             </h4>
             <p className="text-[11px] text-zinc-500 mt-0.5">Visão unificada das missões diárias concluídas (eixo esquerdo) e XP acumulado por dia (eixo direito)</p>
@@ -505,20 +473,20 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
                 <YAxis yAxisId="left" orientation="left" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#10b981' }} />
-                <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#6366f1' }} />
+                <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#ec4899' }} />
                 <Tooltip
                   contentStyle={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '12px', fontSize: '11px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', color: '#fff' }}
                 />
                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px' }} />
                 <Bar yAxisId="left" dataKey="completedCount" fill="#10b981" radius={[4, 4, 0, 0]} name="Tarefas Concluídas" />
-                <Bar yAxisId="right" dataKey="xpEarned" fill="#6366f1" radius={[4, 4, 0, 0]} name="XP Ganho" />
+                <Bar yAxisId="right" dataKey="xpEarned" fill="#ec4899" radius={[4, 4, 0, 0]} name="XP Ganho" />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Chart 4: Tempo de Foco (Últimos 7 Dias) */}
-        <div id="weekly-focus-minutes-chart-card" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
+        <div id="weekly-focus-minutes-chart-card" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-3xl flex flex-col justify-between shadow-xs lg:col-span-2">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
               <Clock className="w-4 h-4 text-pink-400" />
@@ -551,9 +519,9 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
       </div>
 
       {/* Recent XP Activity Logs (Sleek minimalist timeline) */}
-      <div id="xp-timeline-panel" className="bg-zinc-900/40 border border-zinc-800/60 p-5 rounded-3xl shadow-xs">
+      <div id="xp-timeline-panel" className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 p-5 rounded-3xl shadow-xs">
         <h4 className="text-sm font-bold text-white mb-4 flex items-center space-x-1.5 uppercase tracking-tight">
-          <Sparkles className="w-4 h-4 text-indigo-400" />
+          <Sparkles className="w-4 h-4 text-pink-400" />
           <span>Atividades de Ganho de XP Recentes</span>
         </h4>
         <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
@@ -563,7 +531,7 @@ export default function StatsDashboard({ stats, tasks }: StatsDashboardProps) {
             stats.xpLogs.map((log) => (
               <div key={log.id} className="flex items-center justify-between py-2 border-b border-zinc-850 last:border-b-0 text-xs">
                 <div className="flex items-center space-x-3 pr-2">
-                  <div className="bg-indigo-950/50 border border-indigo-900/40 text-indigo-400 font-mono font-bold px-2 py-1 rounded-lg shrink-0">
+                  <div className="bg-pink-950/50 border border-pink-900/40 text-pink-400 font-mono font-bold px-2 py-1 rounded-lg shrink-0">
                     +{log.amount} XP
                   </div>
                   <span className="text-zinc-300 font-medium line-clamp-1">{log.reason}</span>

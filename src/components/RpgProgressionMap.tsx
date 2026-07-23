@@ -17,80 +17,80 @@ interface MapNode {
 const RPG_MAP_NODES: MapNode[] = [
   {
     id: 1,
-    name: "Vale da Partida",
+    name: "Torii da Iniciação",
     requiredLevel: 1,
-    description: "O início da sua jornada de foco. Onde as primeiras missões diárias nascem e a procrastinação começa a tremer.",
-    boss: "Slime Preguiçoso",
-    icon: "🌱",
-    color: "text-emerald-400 border-emerald-500/20",
-    bgGradient: "from-emerald-950/40 via-emerald-900/10 to-zinc-950",
-    borderGlow: "group-hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+    description: "O portal sagrado de entrada dos templos. Onde o guerreiro jura disciplina e a caminhada samurai contra a procrastinação se inicia.",
+    boss: "Yokai da Preguiça",
+    icon: "⛩️",
+    color: "text-pink-400 border-pink-500/20",
+    bgGradient: "from-pink-950/40 via-rose-900/10 to-zinc-950",
+    borderGlow: "group-hover:shadow-[0_0_15px_rgba(244,63,94,0.25)]"
   },
   {
     id: 2,
-    name: "Floresta do Foco Inicial",
+    name: "Floresta de Cerejeiras",
     requiredLevel: 3,
-    description: "Um bosque denso onde as primeiras sessões Pomodoro são testadas. Cuidado com os gnomos das redes sociais!",
-    boss: "Gnomo das Notificações",
-    icon: "🌲",
-    color: "text-teal-400 border-teal-500/20",
-    bgGradient: "from-teal-950/40 via-teal-900/10 to-zinc-950",
-    borderGlow: "group-hover:shadow-[0_0_15px_rgba(20,184,166,0.25)]"
+    description: "Bosque sagrado sob chuva de pétalas de Sakura 🌸. Cada flor caída representa 25 minutos de foco ininterrupto e calma mental.",
+    boss: "Tanuki das Distrações",
+    icon: "🌸",
+    color: "text-rose-400 border-rose-500/20",
+    bgGradient: "from-rose-950/40 via-pink-900/10 to-zinc-950",
+    borderGlow: "group-hover:shadow-[0_0_15px_rgba(244,63,94,0.25)]"
   },
   {
     id: 3,
-    name: "Montanhas da Rotina",
+    name: "Santuário de Kitsune",
     requiredLevel: 5,
-    description: "Onde o hábito diário é forjado no frio das altitudes. Subir aqui exige consistência diária inabalável.",
-    boss: "Golem da Inércia",
-    icon: "🏔️",
-    color: "text-cyan-400 border-cyan-500/20",
-    bgGradient: "from-cyan-950/40 via-cyan-900/10 to-zinc-950",
-    borderGlow: "group-hover:shadow-[0_0_15px_rgba(6,182,212,0.25)]"
-  },
-  {
-    id: 4,
-    name: "Canyon da Alta Prioridade",
-    requiredLevel: 7,
-    description: "Um desfiladeiro perigoso onde apenas as tarefas urgentes e mais valiosas são concluídas com destreza.",
-    boss: "Gargula da Urgência",
-    icon: "⚡",
-    color: "text-amber-400 border-amber-500/20",
-    bgGradient: "from-amber-950/40 via-amber-900/10 to-zinc-950",
-    borderGlow: "group-hover:shadow-[0_0_15px_rgba(245,158,11,0.25)]"
-  },
-  {
-    id: 5,
-    name: "Oásis do Modo Zen",
-    requiredLevel: 10,
-    description: "Um refúgio escondido de distração zero. Onde o silêncio reina e as abas do navegador estão trancadas a sete chaves.",
-    boss: "Esfinge da Concentração",
-    icon: "🏝️",
-    color: "text-emerald-400 border-emerald-500/20",
-    bgGradient: "from-emerald-950/40 via-emerald-900/10 to-zinc-950",
-    borderGlow: "group-hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]"
-  },
-  {
-    id: 6,
-    name: "Templo do Fluxo Profundo",
-    requiredLevel: 12,
-    description: "O santuário ancestral onde o lendário Estado de Flow é atingido. Mente, corpo e foco operam em perfeita sintonia.",
-    boss: "Dragão do Caos Mental",
-    icon: "⛩️",
+    description: "O reino ancestral da raposa mística. Onde hábitos diários são moldados com astúcia, estratégia e sabedoria milenar.",
+    boss: "Kitsune Ilusória",
+    icon: "🦊",
     color: "text-fuchsia-400 border-fuchsia-500/20",
-    bgGradient: "from-fuchsia-950/40 via-fuchsia-900/10 to-zinc-950",
+    bgGradient: "from-fuchsia-950/40 via-pink-900/10 to-zinc-950",
     borderGlow: "group-hover:shadow-[0_0_15px_rgba(217,70,239,0.25)]"
   },
   {
-    id: 7,
-    name: "Pico do Mestre Mental",
-    requiredLevel: 15,
-    description: "O topo absoluto do mundo. Apenas lendas do foco conseguem meditar aqui, imunes a qualquer interrupção do universo.",
-    boss: "Mestre Supremo do Tempo",
-    icon: "👑",
-    color: "text-rose-400 border-rose-500/20",
-    bgGradient: "from-rose-950/40 via-rose-900/10 to-zinc-950",
+    id: 4,
+    name: "Cume do Monte Fuji",
+    requiredLevel: 7,
+    description: "A montanha sagrada 🗻 sob ventos celestiais. Chegar ao topo exige constância inabalável para vencer o cansaço do espírito.",
+    boss: "Tengu das Tempestades",
+    icon: "🗻",
+    color: "text-pink-300 border-pink-400/20",
+    bgGradient: "from-pink-950/50 via-purple-900/10 to-zinc-950",
+    borderGlow: "group-hover:shadow-[0_0_15px_rgba(236,72,153,0.25)]"
+  },
+  {
+    id: 5,
+    name: "Palácio de Ryujin",
+    requiredLevel: 10,
+    description: "O santuário submerso do Rei Dragão 🐉 nas profundezas do oceano. Onde o silêncio reina e o Estado de Flow é inatingível ao caos.",
+    boss: "Dragão das Marés Caóticas",
+    icon: "🐉",
+    color: "text-rose-300 border-rose-400/20",
+    bgGradient: "from-rose-950/50 via-fuchsia-900/10 to-zinc-950",
     borderGlow: "group-hover:shadow-[0_0_15px_rgba(244,63,94,0.25)]"
+  },
+  {
+    id: 6,
+    name: "Domínio de Susanoo",
+    requiredLevel: 12,
+    description: "O santuário tempestuoso do Deus dos Trovões ⚡. Onde o foco atinge a velocidade e força do raio samurai.",
+    boss: "Raijin do Caos Mental",
+    icon: "⚡",
+    color: "text-pink-400 border-pink-500/20",
+    bgGradient: "from-pink-950/60 via-rose-900/20 to-zinc-950",
+    borderGlow: "group-hover:shadow-[0_0_15px_rgba(236,72,153,0.3)]"
+  },
+  {
+    id: 7,
+    name: "Templo de Amaterasu",
+    requiredLevel: 15,
+    description: "O santuário divino da Deusa do Sol ☀️. O ápice absoluto do guerreiro que dominou o tempo, a mente e o foco samurai.",
+    boss: "Oni Supremo da Procrastinação",
+    icon: "☀️",
+    color: "text-rose-400 border-rose-500/20",
+    bgGradient: "from-rose-950/60 via-pink-900/20 to-zinc-950",
+    borderGlow: "group-hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]"
   }
 ];
 
@@ -113,7 +113,7 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
   };
 
   return (
-    <div id="rpg-progression-map-card" className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col">
+    <div id="rpg-progression-map-card" className="bg-zinc-950 border border-pink-500/30 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col">
       {/* Dynamic Background Grid Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-35" />
 
@@ -121,13 +121,13 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
       <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-zinc-900">
         <div>
           <h4 className="text-sm font-bold text-white flex items-center space-x-1.5 uppercase tracking-tight">
-            <Sword className="w-4 h-4 text-emerald-400 animate-pulse" />
-            <span>Mapa da Jornada Mental RPG</span>
+            <Sword className="w-4 h-4 text-pink-400 animate-pulse" />
+            <span>Jornada Mitológica Samurai [ 侍 ]</span>
           </h4>
-          <p className="text-[11px] text-zinc-500 mt-0.5">Desbloqueie novas terras mentais e derrote monstros da procrastinação ao subir de nível</p>
+          <p className="text-[11px] text-zinc-500 mt-0.5">Explore os santuários da mitologia japonesa e derrote os Yokais da procrastinação</p>
         </div>
-        <div className="flex items-center space-x-2 bg-emerald-950/20 border border-emerald-500/20 rounded-xl px-3 py-1 text-xs text-emerald-400 font-bold shrink-0 font-mono">
-          <Star className="w-3.5 h-3.5 fill-emerald-400 animate-spin" style={{ animationDuration: '6s' }} />
+        <div className="flex items-center space-x-2 bg-pink-950/40 border border-pink-500/30 rounded-xl px-3 py-1 text-xs text-pink-400 font-bold shrink-0 font-mono">
+          <Star className="w-3.5 h-3.5 fill-pink-400 animate-spin" style={{ animationDuration: '6s' }} />
           <span>STATUS: NÍVEL {currentLevel}</span>
         </div>
       </div>
@@ -158,9 +158,9 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
             />
             <defs>
               <linearGradient id="rpg-trail-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#10b981" />
-                <stop offset="50%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#ec4899" />
+                <stop offset="0%" stopColor="#ec4899" />
+                <stop offset="50%" stopColor="#f43f5e" />
+                <stop offset="100%" stopColor="#d946ef" />
               </linearGradient>
             </defs>
           </svg>
@@ -187,9 +187,9 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
                   onClick={() => handleNodeClick(node)}
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all relative cursor-pointer active:scale-95 ${
                     isCompleted
-                      ? 'bg-emerald-950/40 border-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                      ? 'bg-pink-950/40 border-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]'
                       : isActive
-                      ? 'bg-indigo-950/50 border-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)] animate-pulse'
+                      ? 'bg-rose-950/60 border-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.5)] animate-pulse'
                       : 'bg-zinc-950 border-zinc-850 text-zinc-600'
                   }`}
                 >
@@ -202,7 +202,7 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
 
                   {/* Completed Star Check Badge */}
                   {isCompleted && (
-                    <div className="absolute -top-1 -right-1 bg-emerald-500 p-0.5 rounded-full text-zinc-950">
+                    <div className="absolute -top-1 -right-1 bg-pink-500 p-0.5 rounded-full text-zinc-950">
                       <CheckCircle className="w-2.5 h-2.5 fill-current" />
                     </div>
                   )}
@@ -214,7 +214,7 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
 
                   {/* Player token overlay for current active location */}
                   {isActive && (
-                    <span className="absolute -bottom-2.5 bg-indigo-500 text-[8px] text-white font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider font-mono animate-bounce shadow-md">
+                    <span className="absolute -bottom-2.5 bg-rose-600 text-[8px] text-white font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider font-mono animate-bounce shadow-md">
                       Você
                     </span>
                   )}
@@ -222,10 +222,10 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
 
                 {/* Node Text */}
                 <div className="text-center mt-3">
-                  <span className={`block text-[10px] font-bold font-mono tracking-tight ${isLocked ? 'text-zinc-600' : 'text-zinc-300 group-hover:text-white transition-colors'}`}>
-                    Fase {node.id}
+                  <span className={`block text-[10px] font-bold font-mono tracking-tight ${isLocked ? 'text-zinc-600' : 'text-pink-300 group-hover:text-white transition-colors'}`}>
+                    Santuário {node.id}
                   </span>
-                  <span className={`block text-[9px] uppercase tracking-wider font-extrabold ${isLocked ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                  <span className={`block text-[9px] uppercase tracking-wider font-extrabold ${isLocked ? 'text-zinc-500' : 'text-zinc-300'}`}>
                     {node.name.split(' ')[0]}
                   </span>
                 </div>
@@ -237,7 +237,7 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
 
       {/* Selected Node Details Lore Card */}
       {selectedNode && (
-        <div className={`mt-2 bg-zinc-900/40 border rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all duration-300 relative overflow-hidden bg-gradient-to-r ${selectedNode.bgGradient} border-zinc-850`}>
+        <div className={`mt-2 bg-zinc-900/40 border rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all duration-300 relative overflow-hidden bg-gradient-to-r ${selectedNode.bgGradient} border-pink-500/20`}>
           <div className="space-y-1.5 flex-1 pr-2">
             <div className="flex items-center space-x-2">
               <span className="text-2xl">{selectedNode.icon}</span>
@@ -245,24 +245,24 @@ export default function RpgProgressionMap({ currentLevel }: RpgProgressionMapPro
                 <h5 className="text-xs font-black uppercase text-white tracking-wider flex items-center space-x-1.5">
                   <span>Fase {selectedNode.id}: {selectedNode.name}</span>
                   {currentLevel >= selectedNode.requiredLevel ? (
-                    <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-bold px-1.5 py-0.5 rounded-sm">CONQUISTADO</span>
+                    <span className="text-[9px] bg-pink-500/20 border border-pink-500/30 text-pink-300 font-mono font-bold px-1.5 py-0.5 rounded-sm">CONQUISTADO</span>
                   ) : (
                     <span className="text-[9px] bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono px-1.5 py-0.5 rounded-sm flex items-center gap-1">
                       <Lock className="w-2 h-2" /> REQUER NÍVEL {selectedNode.requiredLevel}
                     </span>
                   )}
                 </h5>
-                <span className="text-[10px] font-bold text-zinc-500 block">Monstro Protetor: <span className="text-zinc-400 font-semibold">{selectedNode.boss} 👾</span></span>
+                <span className="text-[10px] font-bold text-pink-300/80 block">Oponente Espiritual: <span className="text-zinc-300 font-semibold">{selectedNode.boss} 👺</span></span>
               </div>
             </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed max-w-xl">{selectedNode.description}</p>
+            <p className="text-[11px] text-zinc-300 leading-relaxed max-w-xl">{selectedNode.description}</p>
           </div>
 
           <div className="shrink-0 w-full md:w-auto">
             {currentLevel >= selectedNode.requiredLevel ? (
-              <div className="flex items-center space-x-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs px-4 py-2.5 rounded-xl font-bold w-full justify-center md:w-auto">
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
-                <span>Território Seguro (+{selectedNode.requiredLevel * 100} XP Máximo)</span>
+              <div className="flex items-center space-x-1.5 bg-pink-500/20 border border-pink-500/30 text-pink-300 text-xs px-4 py-2.5 rounded-xl font-bold w-full justify-center md:w-auto">
+                <CheckCircle className="w-4 h-4 text-pink-400" />
+                <span>Santuário Pacífico (+{selectedNode.requiredLevel * 100} XP)</span>
               </div>
             ) : (
               <div className="flex items-center space-x-1.5 bg-zinc-900/60 border border-zinc-800 text-zinc-500 text-xs px-4 py-2.5 rounded-xl font-semibold w-full justify-center md:w-auto">

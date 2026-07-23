@@ -89,16 +89,19 @@ export default function TaskList({
     <div id="task-list-section-container" className="space-y-4">
       
       {/* Controls & Headers */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-zinc-850 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-pink-500/20 gap-3">
         <div>
-          <h3 className="text-base font-bold text-white tracking-tight uppercase">Daily Quests</h3>
-          <p className="text-xs text-zinc-500">Transforme tarefas assustadoras em pequenas vitórias que rendem XP</p>
+          <div className="flex items-center space-x-2">
+            <span className="text-pink-400 font-bold font-mono text-sm">⛩️ 任務</span>
+            <h3 className="text-base font-black text-white tracking-tight uppercase font-sans">Daily Quests</h3>
+          </div>
+          <p className="text-xs text-zinc-400 mt-0.5">Transforme grandes objetivos em missões diárias com honra e recompensa de XP</p>
         </div>
 
         <button
           id="toggle-add-task-btn"
           onClick={() => setIsAdding(!isAdding)}
-          className={`px-4 py-2 text-xs font-semibold rounded-xl text-white transition-all duration-200 flex items-center space-x-1.5 shrink-0 self-start sm:self-center shadow-md ${isAdding ? 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700' : 'bg-indigo-600 hover:bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.4)]'}`}
+          className={`px-4 py-2 text-xs font-bold rounded-xl text-white transition-all duration-200 flex items-center space-x-1.5 shrink-0 self-start sm:self-center shadow-md cursor-pointer ${isAdding ? 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700' : 'bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 border border-pink-400/30 shadow-[0_0_15px_rgba(244,114,182,0.3)]'}`}
         >
           <Plus className="w-4 h-4" />
           <span>{isAdding ? 'Fechar' : 'Nova Missão'}</span>

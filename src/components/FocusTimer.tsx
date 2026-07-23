@@ -118,29 +118,30 @@ export default function FocusTimer({ onFocusComplete, currentTaskTitle, soundEna
   const progressPercent = ((initialSeconds - secondsLeft) / initialSeconds) * 100;
 
   return (
-    <div id="focus-timer-section" className="bg-zinc-900/40 border border-zinc-800/50 p-6 rounded-3xl flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300 shadow-[0_0_25px_rgba(0,0,0,0.4)] animate-pop-in">
+    <div id="focus-timer-section" className="bg-zinc-950/70 border border-pink-500/20 p-6 rounded-3xl flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300 shadow-[0_0_25px_rgba(0,0,0,0.4)] animate-pop-in">
       
       {/* Gentle floating status bubble */}
-      <div className="absolute top-3 left-4 flex items-center space-x-1.5 text-xs font-medium text-zinc-500">
-        <span className={`inline-block w-2 h-2 rounded-full ${isActive ? 'bg-indigo-500 pulse-focus' : 'bg-zinc-800'}`}></span>
-        <span>{isActive ? 'Focando...' : 'Timer pronto'}</span>
+      <div className="absolute top-3 left-4 flex items-center space-x-1.5 text-xs font-medium text-pink-300/70">
+        <span className={`inline-block w-2 h-2 rounded-full ${isActive ? 'bg-pink-400 pulse-focus' : 'bg-zinc-800'}`}></span>
+        <span className="font-mono text-[10px] tracking-wider uppercase">{isActive ? '集中中 • Focando' : '準備完了 • Pronto'}</span>
       </div>
 
       <button
         id="toggle-sound-btn"
         onClick={onToggleSound}
-        className="absolute top-3 right-4 text-zinc-500 hover:text-zinc-300 transition-colors p-1"
+        className="absolute top-3 right-4 text-pink-300/70 hover:text-pink-300 transition-colors p-1"
         title={soundEnabled ? "Desativar som de conclusão" : "Ativar som de conclusão"}
       >
         {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
       </button>
 
       <div className="w-full text-center mt-4">
-        <h3 className="text-sm font-semibold text-white tracking-tight flex items-center justify-center space-x-1 uppercase">
-          <Brain className="w-4 h-4 text-indigo-400" />
-          <span>Timer de Foco Auxiliar</span>
+        <h3 className="text-sm font-bold text-white tracking-tight flex items-center justify-center space-x-1.5 uppercase">
+          <span className="text-pink-400 font-mono">[ 集中 ]</span>
+          <Brain className="w-4 h-4 text-pink-400" />
+          <span>Timer de Foco</span>
         </h3>
-        <p className="text-xs text-zinc-500 mt-0.5 max-w-xs mx-auto truncate">
+        <p className="text-xs text-pink-200/70 mt-0.5 max-w-xs mx-auto truncate font-mono">
           {currentTaskTitle ? `Foco em: "${currentTaskTitle}"` : 'Foque na sua mente, sem distrações'}
         </p>
       </div>

@@ -237,3 +237,40 @@ body {
   }
 }
 
+/* Sakura Petals Falling Animation */
+@keyframes sakuraFall {
+  0% {
+    transform: translateY(-20px) rotate(0deg) translateX(0px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(50vh) rotate(180deg) translateX(30px);
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(105vh) rotate(360deg) translateX(-20px);
+    opacity: 0;
+  }
+}
+
+.animate-sakura-fall {
+  animation: sakuraFall linear infinite;
+}
+
+/* Japanese Cyber-Zen HUD Styling */
+.japanese-hud-border {
+  border: 1px solid rgba(244, 114, 182, 0.25);
+  box-shadow: 0 0 15px rgba(244, 114, 182, 0.08);
+}
+
+.japanese-hud-header {
+  background: linear-gradient(135deg, rgba(24, 18, 24, 0.95) 0%, rgba(13, 13, 18, 0.98) 100%);
+  border-bottom: 1px solid rgba(244, 114, 182, 0.2);
+}
+

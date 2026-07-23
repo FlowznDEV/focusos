@@ -3,7 +3,7 @@ import { useGamifiedState, getXPForNextLevel } from './useGamifiedState';
 import { Task } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import FocusTimer from './components/FocusTimer';
-import AICoach from './components/AICoach';
+import GuideTab from './components/GuideTab';
 import StatsDashboard from './components/StatsDashboard';
 import AchievementsList from './components/AchievementsList';
 import TaskList from './components/TaskList';
@@ -19,9 +19,9 @@ import SettingsModal from './components/SettingsModal';
 import DeepWorkOverlay from './components/DeepWorkOverlay';
 import PaymentStatusTab from './components/PaymentStatusTab';
 import { AccentTheme } from './utils/theme';
-import { Brain, Flame, Award, Zap, SlidersHorizontal, RefreshCw, Sparkles, HelpCircle, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Cloud, ArrowDownCircle, ArrowUpCircle, Database, LogOut, Check, Sun, Moon, Sliders, Lock, ShieldCheck, CreditCard } from 'lucide-react';
+import { Flame, Award, Zap, RefreshCw, Sparkles, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Sliders, Lock, ShieldCheck, Brain, Moon, Sun, Database, ArrowDownCircle, ArrowUpCircle, HelpCircle } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound, playLevelUpSound } from './lib/sound';
-import { createBackupObject, triggerJsonDownload, parseAndValidateBackup, isAutoBackupDue } from './lib/backup';
+import { FallingSakuraPetals, SakuraTreeBranch, ToriiGateIcon, JapaneseHudBracket } from './components/SakuraDecorations';
 
 const FOCUS_TIPS = [
   "A técnica Pomodoro (25 minutos de foco e 5 de descanso) ajuda a manter a mente fresca.",
@@ -155,12 +155,6 @@ export default function App() {
   const [simulatedDays, setSimulatedDays] = useState<number>(() => {
     const saved = localStorage.getItem('focus_quest_simulated_days');
     return saved ? parseInt(saved, 10) : 0;
-  });
-
-  // 24-Hour Automatic JSON Backup & Progress Restore State
-  const [lastAutoBackupTimestamp, setLastAutoBackupTimestamp] = useState<number | null>(() => {
-    const saved = localStorage.getItem('focus_quest_last_auto_backup');
-    return saved ? parseInt(saved, 10) : null;
   });
 
   const getDaysOfUse = () => {
@@ -300,10 +294,10 @@ export default function App() {
   };
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<'tasks' | 'stats' | 'coach' | 'achievements' | 'journal' | 'payment'>('tasks');
+  const [activeMainTab, setActiveMainTab] = useState<'tasks' | 'stats' | 'guide' | 'achievements' | 'journal' | 'payment'>('tasks');
   const [blockedActionNotice, setBlockedActionNotice] = useState<string | null>(null);
 
-  const handleTabClick = (tab: 'tasks' | 'stats' | 'coach' | 'achievements' | 'journal' | 'payment') => {
+  const handleTabClick = (tab: 'tasks' | 'stats' | 'guide' | 'achievements' | 'journal' | 'payment') => {
     playTypeSound();
     if (!premium && isTrialEnded && tab !== 'payment') {
       setBlockedActionNotice('🔒 PERÍODO DE TESTE EXPIRADO: Assine o FocusOS no Kiwify para liberar todas as abas.');
@@ -322,105 +316,6 @@ export default function App() {
   const [currentTip, setCurrentTip] = useState('');
   const [loadingModalTip, setLoadingModalTip] = useState(false);
   const [zenMode, setZenMode] = useState(false);
-
-  // 24-Hour Automatic JSON Backup & Progress Restore Handlers
-  const handleExportBackup = useCallback((isAuto: boolean = false) => {
-    const backupObj = createBackupObject(
-      tasks,
-      achievements,
-      stats,
-      journalEntries,
-      longTermGoals,
-      session,
-      {
-        accentTheme,
-        nightMode: isNight,
-        soundEnabled,
-        zenMode,
-        premium,
-        planType,
-        firstUsedAt,
-        simulatedDays,
-        usedFunctions
-      }
-    );
-    triggerJsonDownload(backupObj, isAuto);
-
-    const now = Date.now();
-    setLastAutoBackupTimestamp(now);
-    localStorage.setItem('focus_quest_last_auto_backup', now.toString());
-  }, [tasks, achievements, stats, journalEntries, longTermGoals, session, accentTheme, isNight, soundEnabled, zenMode, premium, planType, firstUsedAt, simulatedDays, usedFunctions]);
-
-  // Effect to automatically export backup JSON every 24 hours
-  useEffect(() => {
-    const checkAndRunAutoBackup = () => {
-      if (isAutoBackupDue(lastAutoBackupTimestamp)) {
-        console.log("[AUTO BACKUP 24H] Executando exportação automática de 24h...");
-        handleExportBackup(true);
-      }
-    };
-
-    // Check on mount
-    checkAndRunAutoBackup();
-
-    // Periodic check every 30 minutes while tab is open
-    const interval = setInterval(checkAndRunAutoBackup, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [lastAutoBackupTimestamp, handleExportBackup]);
-
-  // Function to manually restore full progress from a user-provided JSON file
-  const handleRestoreBackupFile = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      if (!content) return;
-
-      const result = parseAndValidateBackup(content);
-      if (!result.success || !result.data) {
-        alert(result.error || "Erro ao ler o arquivo de backup selecionado.");
-        return;
-      }
-
-      const backup = result.data;
-      const data = backup.data;
-
-      // 1. Restore RPG & task state
-      restoreAllData({
-        tasks: data.tasks,
-        achievements: data.achievements,
-        stats: data.stats,
-        journalEntries: data.journalEntries,
-        longTermGoals: data.longTermGoals
-      });
-
-      // 2. Restore preferences if present
-      if (data.preferences) {
-        if (data.preferences.accentTheme) setAccentTheme(data.preferences.accentTheme as AccentTheme);
-        if (typeof data.preferences.nightMode === 'boolean') setIsNight(data.preferences.nightMode);
-        if (typeof data.preferences.soundEnabled === 'boolean') {
-          setSoundEnabled(data.preferences.soundEnabled);
-          setGlobalSoundEnabled(data.preferences.soundEnabled);
-        }
-        if (typeof data.preferences.zenMode === 'boolean') setZenMode(data.preferences.zenMode);
-        if (typeof data.preferences.premium === 'boolean') {
-          setPremium(data.preferences.premium);
-          localStorage.setItem('focus_quest_premium', data.preferences.premium.toString());
-        }
-        if (data.preferences.planType) {
-          setPlanType(data.preferences.planType);
-          localStorage.setItem('focus_quest_plan_type', data.preferences.planType);
-        }
-        if (data.preferences.simulatedDays) setSimulatedDays(data.preferences.simulatedDays);
-      }
-
-      // 3. Restore session
-      if (data.session) {
-        setSession(data.session);
-        localStorage.setItem('focus_quest_user_session', JSON.stringify(data.session));
-      }
-    };
-    reader.readAsText(file);
-  }, [restoreAllData]);
 
   const fetchModalTip = async () => {
     setLoadingModalTip(true);
@@ -718,12 +613,14 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen w-full bg-[#05060a] text-zinc-100 relative font-sans flex flex-col transition-all duration-[1200ms] ease-in-out ${
+    <div className={`min-h-screen w-full bg-[#0d0d12] text-zinc-100 relative font-sans flex flex-col transition-all duration-[1200ms] ease-in-out ${
       isNight 
         ? 'brightness-[0.93] contrast-[0.96] saturate-[0.92] [color-scheme:dark] sepia-[0.04]' 
         : 'brightness-100 contrast-100 saturate-100'
     }`}>
-      
+      {/* Floating Sakura Petals Overlay */}
+      <FallingSakuraPetals />
+
       <style>{`
         @keyframes levelParticle {
           0% {
@@ -806,32 +703,46 @@ export default function App() {
       {/* Decorative ultra-minimalist subtle accent line instead of neon */}
       <div className="h-[1px] w-full bg-zinc-850 absolute top-0 left-0 z-50" />
 
-      {/* Primary Header - Fixed Minimalist & Elegant HUD */}
-      <header className="bg-zinc-950 border-b border-zinc-900 sticky top-0 z-40 backdrop-blur-md">
-        <div className="w-full px-4 sm:px-6 md:px-8 py-3">
+      {/* Falling Sakura Petals Background Animation for Tasks Tab */}
+      {activeMainTab === 'tasks' && <FallingSakuraPetals />}
+
+      {/* Primary Header - Japanese Sakura HUD Style */}
+      <header className="bg-zinc-950/90 border-b border-rose-500/25 sticky top-0 z-40 backdrop-blur-md relative overflow-hidden">
+        {/* Sakura Tree Branch Corner Decoration */}
+        <div className="absolute top-0 right-0 w-64 md:w-80 h-full opacity-60 pointer-events-none">
+          <SakuraTreeBranch />
+        </div>
+
+        <div className="w-full px-4 sm:px-6 md:px-8 py-3 relative z-10">
           {/* Main top header flex container */}
           <div className="flex items-center justify-between gap-2 md:gap-4">
             
-            {/* Logo area - Sleek & Ultra Minimalist with Supabase Integration */}
+            {/* Logo area - Japanese HUD Title */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-              <div className="flex items-center space-x-1.5 sm:space-x-2 group cursor-pointer" onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}>
-                <div className="w-8 h-8 bg-zinc-950 border border-emerald-500/30 rounded-lg flex items-center justify-center transition-all duration-300 hover:border-emerald-400 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
-                  <Sparkles className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 transition-colors" />
+              <div className="flex items-center space-x-2 group cursor-pointer" onClick={() => { setActiveMainTab('tasks'); playTypeSound(); }}>
+                <div className="w-9 h-9 bg-pink-950/40 border border-pink-500/40 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:border-pink-400 shrink-0 shadow-[0_0_12px_rgba(244,114,182,0.2)]">
+                  <ToriiGateIcon className="w-5 h-5 text-pink-400 group-hover:text-pink-300 transition-colors" />
                 </div>
-                <span className="text-sm font-black tracking-wider text-white uppercase font-sans group-hover:text-emerald-300 transition-colors">FocusOS</span>
+                <div className="flex flex-col">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-sm font-black tracking-wider text-white uppercase font-sans">FocusOS</span>
+                    <span className="text-xs font-bold text-pink-400 font-mono">[ 禅 ]</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-pink-300/80 tracking-widest uppercase hidden xs:inline">// SAKURA SAMURAI HUD</span>
+                </div>
               </div>
 
               {/* Session Pill */}
               {session ? (
-                <div className="flex items-center space-x-1 bg-emerald-950/20 border border-emerald-950/40 rounded-xl px-2 py-1 sm:px-3 sm:py-1 text-[10px] text-emerald-400 font-mono font-bold max-w-[110px] xs:max-w-[140px] sm:max-w-xs shrink-1">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
+                <div className="flex items-center space-x-1 bg-pink-950/30 border border-pink-500/30 rounded-xl px-2 py-1 sm:px-3 sm:py-1 text-[10px] text-pink-300 font-mono font-bold max-w-[110px] xs:max-w-[140px] sm:max-w-xs shrink-1">
+                  <span className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-pulse shrink-0" />
                   <span className="truncate max-w-[45px] xs:max-w-[70px] sm:max-w-[120px]">{session.email}</span>
                   {syncStatus === 'syncing' ? (
                     <span className="text-[9px] text-zinc-500 italic animate-pulse shrink-0 hidden sm:inline">...</span>
                   ) : syncStatus === 'synced' ? (
-                    <span className="text-[9px] text-emerald-500 font-bold tracking-wider shrink-0 hidden sm:inline">// SALVO</span>
+                    <span className="text-[9px] text-pink-400 font-bold tracking-wider shrink-0 hidden sm:inline">// 同期</span>
                   ) : syncStatus === 'error' ? (
-                    <span className="text-[9px] text-rose-500 font-bold shrink-0 hidden sm:inline">// ERRO</span>
+                    <span className="text-[9px] text-rose-500 font-bold shrink-0 hidden sm:inline">// エラー</span>
                   ) : null}
                   <button
                     onClick={() => {
@@ -840,13 +751,13 @@ export default function App() {
                       setSession(null);
                       window.location.reload();
                     }}
-                    className="ml-1 text-zinc-500 hover:text-white font-black text-[9px] uppercase border-l border-emerald-950/50 pl-1.5 cursor-pointer shrink-0"
+                    className="ml-1 text-zinc-400 hover:text-white font-black text-[9px] uppercase border-l border-pink-950/50 pl-1.5 cursor-pointer shrink-0"
                   >
                     Sair
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-850 rounded-xl px-2 py-1 text-[9px] font-mono font-bold text-zinc-400">
+                <div className="flex items-center space-x-1 bg-zinc-900 border border-pink-500/20 rounded-xl px-2 py-1 text-[9px] font-mono font-bold text-pink-300">
                   <span className="hidden md:inline">Offline Local</span>
                   <button
                     onClick={() => {
@@ -854,7 +765,7 @@ export default function App() {
                       localStorage.removeItem('focus_quest_offline_mode');
                       setIsOfflineMode(false);
                     }}
-                    className="text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                    className="text-pink-400 hover:text-pink-300 underline cursor-pointer"
                   >
                     Nuvem
                   </button>
@@ -866,13 +777,13 @@ export default function App() {
                 onClick={() => { playTypeSound(); setIsNight(!isNight); trackFunctionUsed('filter'); }}
                 className={`flex items-center justify-center border rounded-xl w-9 h-9 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 text-[9px] font-mono font-bold transition-all duration-500 shrink-0 cursor-pointer ${
                   isNight 
-                    ? 'bg-indigo-950/20 border-indigo-500/20 text-indigo-400 hover:border-indigo-500/50' 
-                    : 'bg-amber-950/20 border-amber-500/20 text-amber-400 hover:border-amber-500/50'
+                    ? 'bg-indigo-950/30 border-indigo-500/30 text-indigo-300 hover:border-indigo-400' 
+                    : 'bg-rose-950/30 border-pink-500/30 text-pink-300 hover:border-pink-400'
                 }`}
-                title={isNight ? "Filtro Noturno Ativo: Clique para mudar" : "Filtro Diurno Ativo: Clique para mudar"}
+                title={isNight ? "Filtro Noturno Ativo" : "Filtro Diurno Ativo"}
               >
-                {isNight ? <Moon className="w-3.5 h-3.5 text-indigo-400 animate-pulse" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
-                <span className="hidden md:inline ml-1.5 uppercase tracking-widest">{isNight ? "Filtro Noturno" : "Filtro Diurno"}</span>
+                {isNight ? <Moon className="w-3.5 h-3.5 text-indigo-400 animate-pulse" /> : <Sun className="w-3.5 h-3.5 text-pink-400" />}
+                <span className="hidden md:inline ml-1.5 uppercase tracking-widest">{isNight ? "Noturno" : "Diurno"}</span>
               </button>
             </div>
 
@@ -881,10 +792,10 @@ export default function App() {
               {/* Sound Toggle */}
               <button
                 onClick={handleToggleSound}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-100 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+                className="flex items-center justify-center border border-pink-500/20 hover:border-pink-500/40 text-zinc-300 hover:text-white w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer bg-zinc-900/60"
                 title={soundEnabled ? "Desativar efeitos sonoros" : "Ativar efeitos sonoros"}
               >
-                {soundEnabled ? <Volume2 className="w-4 h-4 text-zinc-300" /> : <VolumeX className="w-4 h-4 text-zinc-500" />}
+                {soundEnabled ? <Volume2 className="w-4 h-4 text-pink-300" /> : <VolumeX className="w-4 h-4 text-zinc-500" />}
                 <span className="hidden sm:inline ml-1.5 font-medium">{soundEnabled ? "Sons" : "Mudo"}</span>
               </button>
 
@@ -894,61 +805,49 @@ export default function App() {
                 onClick={() => { setZenMode(!zenMode); playTypeSound(); trackFunctionUsed('zen'); }}
                 className={`flex items-center justify-center border w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm ${
                   zenMode 
-                    ? 'bg-zinc-850 border-zinc-700 text-white' 
-                    : 'border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-pink-950/60 border-pink-500/60 text-pink-200' 
+                    : 'border-pink-500/20 bg-zinc-900/60 text-zinc-300 hover:border-pink-500/40'
                 }`}
-                title={zenMode ? "Desativar Modo Zen" : "Ativar Modo Zen"}
+                title="Modo Zen (Sakura Minimal)"
               >
-                <Leaf className={`w-4 h-4 ${zenMode ? 'text-zinc-100' : 'text-zinc-400'}`} />
-                <span className="hidden sm:inline ml-1.5 font-medium">{zenMode ? "Modo Zen" : "Modo Zen"}</span>
+                <Leaf className="w-4 h-4 text-pink-400" />
+                <span className="hidden sm:inline ml-1.5 font-medium">Zen</span>
               </button>
 
               {/* Deep Work Mode Button */}
               <button
                 id="toggle-deep-work-btn"
                 onClick={() => { playTypeSound(); setShowDeepWork(true); trackFunctionUsed('deep_work'); }}
-                className="flex items-center justify-center border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(99,102,241,0.25)]"
-                title="Ativar Modo Deep Work (Foco Sem Distrações)"
+                className="flex items-center justify-center border border-indigo-500/40 bg-indigo-950/50 hover:bg-indigo-900/70 text-indigo-300 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(99,102,241,0.25)]"
+                title="Deep Work (Samurai Focus)"
               >
                 <Zap className="w-4 h-4 text-indigo-400 fill-indigo-400/30 animate-pulse" />
                 <span className="hidden sm:inline ml-1.5 font-mono uppercase tracking-wider text-[11px]">Deep Work</span>
               </button>
 
-              {/* HUD Settings & Theme customization button */}
-              <button
-                id="open-settings-modal-btn"
-                onClick={() => { playTypeSound(); setShowSettingsModal(true); }}
-                className="flex items-center justify-center border border-zinc-850 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-orange-400 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm"
-                title="Configurações & Temas de Cores do HUD"
-              >
-                <Sliders className="w-4 h-4 text-orange-400" />
-                <span className="hidden sm:inline ml-1.5 font-medium">Ajustes & Temas</span>
-              </button>
-
-              {/* Premium RPG Upgrade Button / Active Status crown */}
+              {/* Premium Upgrade Button */}
               {!premium ? (
                 <button
                   id="upgrade-premium-rpg-btn"
                   onClick={() => { playTypeSound(); setShowPremiumModal(true); }}
-                  className="relative flex items-center justify-center bg-gradient-to-r from-amber-600/20 via-yellow-600/20 to-amber-600/20 hover:from-amber-600/30 hover:to-yellow-500/30 border border-amber-500/30 hover:border-amber-400/50 text-amber-400 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.05)]"
+                  className="relative flex items-center justify-center bg-gradient-to-r from-rose-600/30 via-pink-600/30 to-rose-600/30 hover:from-rose-600/40 hover:to-pink-500/40 border border-pink-500/40 text-pink-300 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(244,114,182,0.12)]"
                   title="Upgrade Premium RPG"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
-                  <span className="hidden sm:inline ml-1.5 font-bold font-mono">Premium RPG</span>
-                  {/* Glowing eligibility indicator dot if trial condition is met */}
+                  <Sparkles className="w-4 h-4 text-pink-400 animate-pulse shrink-0" />
+                  <span className="hidden sm:inline ml-1.5 font-bold font-mono">Premium</span>
                   {isTrialEnded && (
                     <>
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping pointer-events-none" />
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-zinc-950 pointer-events-none" />
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-400 rounded-full animate-ping pointer-events-none" />
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-zinc-950 pointer-events-none" />
                     </>
                   )}
                 </button>
               ) : (
                 <div 
-                  className="flex items-center justify-center bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 text-amber-400 px-3 py-2 rounded-xl text-xs font-bold font-mono tracking-widest uppercase shadow-[0_0_10px_rgba(245,158,11,0.03)]"
+                  className="flex items-center justify-center bg-pink-950/30 border border-pink-500/30 text-pink-300 px-3 py-2 rounded-xl text-xs font-bold font-mono tracking-widest uppercase shadow-[0_0_10px_rgba(244,114,182,0.05)]"
                   title="Status Premium: Ativo"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <Sparkles className="w-4 h-4 text-pink-400 shrink-0" />
                   <span className="hidden sm:inline ml-1.5 text-[9px] font-black font-mono tracking-wider">// PREMIUM</span>
                 </div>
               )}
@@ -957,64 +856,45 @@ export default function App() {
 
           {/* Symmetrical mobile-first HUD stats bar */}
           {!zenMode && (
-            <div className="mt-3.5 bg-zinc-950/50 border border-zinc-900 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in shadow-inner relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
+            <div className="mt-3.5 bg-zinc-950/70 border border-pink-500/25 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in shadow-inner relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-pink-500/40 to-transparent" />
+              
               {/* Level & Streak metrics container */}
               <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
                 <div className="flex items-center gap-3">
-                  {/* Level Badge with subtle background color */}
-                  <div className="relative overflow-visible flex items-center space-x-2.5 bg-orange-950/30 border border-orange-500/30 rounded-xl px-3 py-2 hover:border-orange-500/50 transition-colors shadow-[0_0_10px_rgba(249,115,22,0.05)]">
-                    <Award className="w-4 h-4 text-orange-400 shrink-0" />
+                  {/* Level Badge */}
+                  <div className="relative overflow-visible flex items-center space-x-2.5 bg-pink-950/40 border border-pink-500/40 rounded-xl px-3 py-2 hover:border-pink-500/60 transition-colors shadow-[0_0_12px_rgba(244,114,182,0.1)]">
+                    <Award className="w-4 h-4 text-pink-400 shrink-0" />
                     <div className="leading-none">
-                      <span className="block text-[8px] text-orange-300 uppercase tracking-widest font-bold font-mono">Nível</span>
-                      <span className="text-xs font-black text-white font-mono">{stats.level} <span className="text-[9px] text-zinc-600">/ 15</span></span>
+                      <span className="block text-[8px] text-pink-300 uppercase tracking-widest font-bold font-mono">段位 • Nível</span>
+                      <span className="text-xs font-black text-white font-mono">{stats.level} <span className="text-[9px] text-zinc-500">/ 15</span></span>
                     </div>
 
                     {showLevelParticles && (
                       <>
-                        {/* Pulsing glow rings around badge */}
-                        <span className="absolute inset-0 rounded-xl border border-orange-400 animate-ping opacity-75 pointer-events-none" />
-                        <span className="absolute -inset-1 rounded-xl bg-orange-500/10 blur-sm animate-pulse pointer-events-none" />
-                        
-                        {/* 12 energy particles radiating outward */}
-                        {[...Array(12)].map((_, i) => {
-                          const angle = (i * 360) / 12;
-                          const delay = (i % 3) * 0.15;
-                          return (
-                            <span
-                              key={i}
-                              className="absolute w-1.5 h-1.5 bg-gradient-to-r from-orange-500 to-orange-400 rounded-full pointer-events-none"
-                              style={{
-                                left: '50%',
-                                top: '50%',
-                                '--angle': `${angle}deg`,
-                                animation: `levelParticle 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) infinite`,
-                                animationDelay: `${delay}s`
-                              } as React.CSSProperties}
-                            />
-                          );
-                        })}
+                        <span className="absolute inset-0 rounded-xl border border-pink-400 animate-ping opacity-75 pointer-events-none" />
+                        <span className="absolute -inset-1 rounded-xl bg-pink-500/20 blur-sm animate-pulse pointer-events-none" />
                       </>
                     )}
                   </div>
 
-                  {/* Day Streak Badge with heartbeat animation */}
-                  <div className="flex items-center space-x-2.5 bg-zinc-900 border border-orange-500/20 rounded-xl px-3 py-2 hover:border-orange-500/40 transition-colors shadow-[0_0_10px_rgba(249,115,22,0.05)]">
-                    <Flame className="w-4 h-4 text-orange-400 shrink-0 animate-pulse" />
+                  {/* Day Streak Badge */}
+                  <div className="flex items-center space-x-2.5 bg-zinc-900/80 border border-pink-500/20 rounded-xl px-3 py-2 hover:border-pink-500/40 transition-colors shadow-[0_0_10px_rgba(244,114,182,0.05)]">
+                    <Flame className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
                     <div className="leading-none">
-                      <span className="block text-[8px] text-orange-300 uppercase tracking-widest font-bold font-mono">Sequência</span>
+                      <span className="block text-[8px] text-pink-300 uppercase tracking-widest font-bold font-mono">連勝 • Sequência</span>
                       <span className="text-xs font-black text-white font-mono">{stats.streak} {stats.streak === 1 ? 'DIA' : 'DIAS'}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Symmetrical Share Button inside HUD container */}
+                {/* Share Button */}
                 <button
                   onClick={() => setShowShareModal(true)}
-                  className="flex items-center justify-center space-x-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 font-extrabold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ml-auto md:ml-3 shrink-0 h-10 min-w-[40px] cursor-pointer"
-                  title="Compartilhar Progresso"
+                  className="flex items-center justify-center space-x-1.5 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-pink-300 font-extrabold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ml-auto md:ml-3 shrink-0 h-10 min-w-[40px] cursor-pointer"
+                  title="Compartilhar Progresso Samurai"
                 >
-                  <Share2 className="w-4 h-4 text-orange-400" />
+                  <Share2 className="w-4 h-4 text-pink-400" />
                   <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-extrabold">Compartilhar</span>
                 </button>
               </div>
@@ -1022,12 +902,12 @@ export default function App() {
               {/* XP progress metrics block */}
               <div className="flex-1 max-w-xl w-full flex flex-col justify-center">
                 <div className="flex justify-between items-baseline text-[10px] font-bold text-zinc-400 mb-1.5 font-mono">
-                  <span className="uppercase tracking-wider">Progresso de Experiência</span>
-                  <span className="text-orange-400">{stats.xp} / {xpNeeded} XP</span>
+                  <span className="uppercase tracking-wider text-pink-300/80">経験値 • Experiência (XP)</span>
+                  <span className="text-pink-400">{stats.xp} / {xpNeeded} XP</span>
                 </div>
-                <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden relative border border-zinc-900">
+                <div className="h-2.5 w-full bg-zinc-950 rounded-full overflow-hidden relative border border-pink-500/20">
                   <div
-                    className="h-full bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                    className="h-full bg-gradient-to-r from-rose-600 via-pink-500 to-rose-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_12px_rgba(244,114,182,0.5)]"
                     style={{ width: `${xpProgressPercent}%` }}
                   />
                 </div>
@@ -1038,121 +918,108 @@ export default function App() {
         </div>
       </header>
 
-      {/* Always Sticky Function Navigation Tabs Bar */}
+      {/* Always Fixed Bottom Navigation Bar - Visible on all screen sizes without scrolling */}
       {!zenMode && (
-        <nav className="sticky top-0 z-40 bg-zinc-950/95 border-b border-zinc-850/80 backdrop-blur-md px-4 sm:px-6 md:px-8 py-2.5 shadow-lg transition-all">
-          <div className="w-full flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-            <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/95 border-t border-pink-500/40 backdrop-blur-md px-2 sm:px-6 py-2 sm:py-2.5 shadow-[0_-10px_35px_rgba(0,0,0,0.9)] transition-all">
+          <div className="max-w-7xl mx-auto flex items-center justify-around sm:justify-between gap-1 sm:gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center space-x-1 sm:space-x-2 w-full justify-between sm:justify-start">
               <button
                 onClick={() => handleTabClick('tasks')}
-                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+                className={`flex flex-col sm:flex-row items-center space-x-0 sm:space-x-2 px-2 py-1 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'tasks'
-                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
-                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
+                    ? 'bg-pink-950/80 text-pink-300 border border-pink-500/60 shadow-[0_0_15px_rgba(244,114,182,0.25)] font-extrabold'
+                    : 'text-zinc-400 hover:text-pink-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <CheckSquare className="w-3.5 h-3.5 text-orange-400" />
-                <span>Missões & Foco</span>
+                <CheckSquare className="w-4 h-4 text-pink-400" />
+                <span className="hidden sm:inline">任務 • Missões</span>
+                <span className="sm:hidden text-[8px] mt-0.5">Missões</span>
               </button>
 
               <button
                 onClick={() => handleTabClick('stats')}
-                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+                className={`flex flex-col sm:flex-row items-center space-x-0 sm:space-x-2 px-2 py-1 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'stats'
-                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
-                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
+                    ? 'bg-pink-950/80 text-pink-300 border border-pink-500/60 shadow-[0_0_15px_rgba(244,114,182,0.25)] font-extrabold'
+                    : 'text-zinc-400 hover:text-pink-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <BarChart2 className="w-3.5 h-3.5 text-orange-400" />
-                <span>Evolução & Gráficos</span>
+                <BarChart2 className="w-4 h-4 text-pink-400" />
+                <span className="hidden sm:inline">進化 • Evolução</span>
+                <span className="sm:hidden text-[8px] mt-0.5">Evolução</span>
               </button>
 
               <button
-                onClick={() => handleTabClick('coach')}
-                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-                  activeMainTab === 'coach'
-                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
-                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
+                onClick={() => handleTabClick('guide')}
+                className={`flex flex-col sm:flex-row items-center space-x-0 sm:space-x-2 px-2 py-1 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+                  activeMainTab === 'guide'
+                    ? 'bg-pink-950/80 text-pink-300 border border-pink-500/60 shadow-[0_0_15px_rgba(244,114,182,0.25)] font-extrabold'
+                    : 'text-zinc-400 hover:text-pink-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <Brain className="w-3.5 h-3.5 text-orange-400" />
-                <span>Treinador IA</span>
+                <HelpCircle className="w-4 h-4 text-pink-400" />
+                <span className="hidden sm:inline">指南 • Como Usar</span>
+                <span className="sm:hidden text-[8px] mt-0.5">Manual</span>
               </button>
 
               <button
                 onClick={() => handleTabClick('achievements')}
-                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+                className={`flex flex-col sm:flex-row items-center space-x-0 sm:space-x-2 px-2 py-1 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'achievements'
-                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
-                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
+                    ? 'bg-pink-950/80 text-pink-300 border border-pink-500/60 shadow-[0_0_15px_rgba(244,114,182,0.25)] font-extrabold'
+                    : 'text-zinc-400 hover:text-pink-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <Trophy className="w-3.5 h-3.5 text-orange-400" />
-                <span>Conquistas ({achievements.filter(a => a.unlocked).length})</span>
+                <Trophy className="w-4 h-4 text-rose-400" />
+                <span className="hidden sm:inline">Conquistas ({achievements.filter(a => a.unlocked).length})</span>
+                <span className="sm:hidden text-[8px] mt-0.5">Troféus</span>
               </button>
 
               <button
                 onClick={() => handleTabClick('journal')}
-                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+                className={`flex flex-col sm:flex-row items-center space-x-0 sm:space-x-2 px-2 py-1 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'journal'
-                    ? 'bg-orange-950/60 text-orange-400 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-extrabold'
-                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
+                    ? 'bg-pink-950/80 text-pink-300 border border-pink-500/60 shadow-[0_0_15px_rgba(244,114,182,0.25)] font-extrabold'
+                    : 'text-zinc-400 hover:text-pink-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
-                <BookOpen className="w-3.5 h-3.5 text-orange-400" />
-                <span>Diário</span>
+                <BookOpen className="w-4 h-4 text-pink-400" />
+                <span className="hidden sm:inline">日誌 • Diário</span>
+                <span className="sm:hidden text-[8px] mt-0.5">Diário</span>
               </button>
 
               {/* Status do Pagamento Tab */}
               <button
                 onClick={() => handleTabClick('payment')}
-                className={`flex items-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+                className={`flex flex-col sm:flex-row items-center space-x-0 sm:space-x-2 px-2 py-1 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
                   activeMainTab === 'payment'
-                    ? 'bg-orange-950/80 text-orange-400 border border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)] font-extrabold'
+                    ? 'bg-pink-950/90 text-pink-300 border border-pink-500/70 shadow-[0_0_15px_rgba(244,114,182,0.3)] font-extrabold'
                     : !premium && isTrialEnded
-                    ? 'text-orange-400 bg-orange-950/40 border border-orange-500/40 hover:bg-orange-900/50 animate-pulse'
-                    : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-transparent'
+                    ? 'text-pink-300 bg-pink-950/50 border border-pink-500/50 hover:bg-pink-900/60 animate-pulse'
+                    : 'text-zinc-400 hover:text-pink-300 hover:bg-zinc-900/60 border border-transparent'
                 }`}
               >
                 {premium ? (
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <ShieldCheck className="w-4 h-4 text-pink-400" />
                 ) : isTrialEnded ? (
-                  <Lock className="w-3.5 h-3.5 text-orange-400" />
+                  <Lock className="w-4 h-4 text-pink-400" />
                 ) : (
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                  <Sparkles className="w-4 h-4 text-rose-400 animate-pulse" />
                 )}
-                <span>Pagamento</span>
-                {!premium && !isTrialEnded && (
-                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[8px] font-mono px-1.5 py-0.2 rounded-full font-bold uppercase">
-                    1 Dia Grátis
-                  </span>
-                )}
-                {!premium && isTrialEnded && (
-                  <span className="bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[8px] font-mono px-1.5 py-0.2 rounded-full font-bold uppercase">
-                    Expirado
-                  </span>
-                )}
+                <span className="hidden sm:inline">侍 • Premium</span>
+                <span className="sm:hidden text-[8px] mt-0.5">Premium</span>
               </button>
             </div>
-
-            <button
-              onClick={() => { setShowSettingsModal(true); playTypeSound(); }}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-orange-300 hover:bg-zinc-900/60 border border-zinc-850 transition-all duration-200 cursor-pointer shrink-0 ml-auto"
-              title="Configurações & Temas do HUD"
-            >
-              <Sliders className="w-3.5 h-3.5 text-orange-400" />
-              <span className="hidden sm:inline">Configurações</span>
-            </button>
           </div>
         </nav>
       )}
 
       {/* Persistent Warning Banner when !premium AND isTrialEnded */}
       {!premium && isTrialEnded && !zenMode && (
-        <div className="bg-gradient-to-r from-orange-950/90 via-zinc-950 to-orange-950/90 border-b border-orange-500/40 text-white px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in z-30">
+        <div className="bg-gradient-to-r from-pink-950/90 via-zinc-950 to-rose-950/90 border-b border-pink-500/40 text-white px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in z-30">
           <div className="flex items-center space-x-3">
-            <div className="p-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 shrink-0">
-              <Lock className="w-4 h-4 animate-bounce text-orange-400" />
+            <div className="p-1.5 rounded-xl bg-pink-500/20 border border-pink-500/40 text-pink-400 shrink-0">
+              <Lock className="w-4 h-4 animate-bounce text-pink-400" />
             </div>
             <p className="text-xs font-semibold text-zinc-200 font-sans">
               <strong>🔒 TESTE GRÁTIS EXPIRADO:</strong> Seu período de 1 dia de teste terminou. Adquira a assinatura do FocusOS na Kiwify para continuar.
@@ -1160,7 +1027,7 @@ export default function App() {
           </div>
           <button
             onClick={() => handleTabClick('payment')}
-            className="bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-zinc-950 font-black text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-xl border border-orange-400 transition-all cursor-pointer shrink-0 font-mono shadow-md active:scale-95"
+            className="bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-black text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-xl border border-pink-400 transition-all cursor-pointer shrink-0 font-mono shadow-md active:scale-95"
           >
             Assinar Agora
           </button>
@@ -1176,87 +1043,18 @@ export default function App() {
         />
       )}
 
-      {/* Mobile Sticky Bottom HUD Navigation */}
-      {!zenMode && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 border-t border-zinc-900 backdrop-blur-md px-1.5 py-2 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.8)] pb-safe">
-          <button
-            onClick={() => handleTabClick('tasks')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'tasks' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
-            }`}
-          >
-            <CheckSquare className="w-4 h-4 mb-0.5" />
-            <span className="text-[8px] uppercase tracking-wider">Missões</span>
-          </button>
-
-          <button
-            onClick={() => handleTabClick('stats')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'stats' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
-            }`}
-          >
-            <BarChart2 className="w-4 h-4 mb-0.5" />
-            <span className="text-[8px] uppercase tracking-wider">Gráficos</span>
-          </button>
-
-          <button
-            onClick={() => handleTabClick('coach')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'coach' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
-            }`}
-          >
-            <Brain className="w-4 h-4 mb-0.5" />
-            <span className="text-[8px] uppercase tracking-wider">Mente</span>
-          </button>
-
-          <button
-            onClick={() => handleTabClick('achievements')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'achievements' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
-            }`}
-          >
-            <Trophy className="w-4 h-4 mb-0.5" />
-            <span className="text-[8px] uppercase tracking-wider">Troféus</span>
-          </button>
-
-          <button
-            onClick={() => handleTabClick('journal')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'journal' ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold' : 'text-zinc-500 font-medium hover:text-zinc-300'
-            }`}
-          >
-            <BookOpen className="w-4 h-4 mb-0.5" />
-            <span className="text-[8px] uppercase tracking-wider">Diário</span>
-          </button>
-
-          <button
-            onClick={() => handleTabClick('payment')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 cursor-pointer ${
-              activeMainTab === 'payment'
-                ? 'text-orange-400 bg-orange-950/40 border border-orange-500/40 font-bold'
-                : !premium && isTrialEnded
-                ? 'text-orange-400 bg-orange-950/30 border border-orange-500/30 font-bold animate-pulse'
-                : 'text-zinc-500 font-medium hover:text-zinc-300'
-            }`}
-          >
-            {!premium && isTrialEnded ? <Lock className="w-4 h-4 mb-0.5 text-orange-400" /> : premium ? <ShieldCheck className="w-4 h-4 mb-0.5 text-emerald-400" /> : <Sparkles className="w-4 h-4 mb-0.5 text-amber-400" />}
-            <span className="text-[8px] uppercase tracking-wider font-bold">Pagar</span>
-          </button>
-        </div>
-      )}
-
       {/* Main Content Workspace Grid */}
-      <main className="w-full flex-1 px-4 sm:px-6 md:px-8 lg:px-10 mt-4 pb-24 md:pb-12">
+      <main className="w-full flex-1 px-4 sm:px-6 md:px-8 lg:px-10 mt-4 pb-28">
         {/* Active Premium purchase notification banner */}
         {!premium && isTrialEnded && showPremiumPrompt && !showDeepWork && (
-          <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-orange-950/90 via-amber-950/90 to-orange-950/90 border border-orange-500/50 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_25px_rgba(249,115,22,0.2)] relative overflow-hidden group animate-pop-in">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-400/60 to-transparent animate-pulse" />
+          <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-pink-950/90 via-rose-950/90 to-pink-950/90 border border-pink-500/50 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_25px_rgba(244,114,182,0.2)] relative overflow-hidden group animate-pop-in">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-pink-400/60 to-transparent animate-pulse" />
             <div className="flex items-center space-x-3.5 text-left">
-              <div className="bg-orange-500/20 border border-orange-500/40 p-3 rounded-2xl text-orange-400 shrink-0">
-                <Sparkles className="w-6 h-6 animate-pulse text-orange-400" />
+              <div className="bg-pink-500/20 border border-pink-500/40 p-3 rounded-2xl text-pink-400 shrink-0">
+                <Sparkles className="w-6 h-6 animate-pulse text-pink-400" />
               </div>
               <div>
-                <span className="text-[9.5px] font-mono font-black text-orange-400 uppercase tracking-widest block">
+                <span className="text-[9.5px] font-mono font-black text-pink-400 uppercase tracking-widest block">
                   ⚠️ SEU PERÍODO DE TESTE GRÁTIS ACABOU!
                 </span>
                 <h4 className="text-sm font-black text-white uppercase tracking-tight mt-0.5">
@@ -1273,7 +1071,7 @@ export default function App() {
                   playTypeSound();
                   setShowPremiumModal(true);
                 }}
-                className="flex-1 md:flex-initial bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-lg shadow-orange-500/30 font-mono"
+                className="flex-1 md:flex-initial bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-lg shadow-pink-500/30 font-mono"
               >
                 Assinar Agora
               </button>
@@ -1307,7 +1105,7 @@ export default function App() {
                 {!zenMode && (
                   <div className="lg:col-span-7 space-y-6">
                     {/* Direct Task List Workspace */}
-                    <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+                    <div className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(236,72,153,0.08)]">
                       <TaskList
                         tasks={tasks}
                         addTask={handleAddTaskWrapper}
@@ -1319,7 +1117,7 @@ export default function App() {
                     </div>
 
                     {/* Long-Term Goals Panel */}
-                    <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+                    <div className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(236,72,153,0.08)]">
                       <LongTermGoals
                         goals={longTermGoals}
                         onAddGoal={addLongTermGoal}
@@ -1335,12 +1133,12 @@ export default function App() {
                 {/* RIGHT COLUMN: Interactive Focus Companion (occupies 5 of 12 columns) */}
                 <div className={`${zenMode ? 'w-full' : 'lg:col-span-5'} space-y-6`}>
                   {zenMode && (
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-center space-y-1.5 animate-pulse">
-                      <div className="flex items-center justify-center space-x-2 text-zinc-400">
-                        <Leaf className="w-4 h-4 text-zinc-300 animate-spin" style={{ animationDuration: '8s' }} />
+                    <div className="bg-pink-950/30 border border-pink-500/40 rounded-2xl p-4 text-center space-y-1.5 animate-pulse">
+                      <div className="flex items-center justify-center space-x-2 text-pink-300">
+                        <Leaf className="w-4 h-4 text-pink-400 animate-spin" style={{ animationDuration: '8s' }} />
                         <span className="text-[10px] font-extrabold uppercase tracking-widest font-mono">MODO_ZEN_ATIVO</span>
                       </div>
-                      <p className="text-xs text-zinc-400">Todas as distrações, abas e barras laterais foram ocultadas para manter seu foco puro.</p>
+                      <p className="text-xs text-zinc-300">Todas as distrações, abas e barras laterais foram ocultadas para manter seu foco puro.</p>
                     </div>
                   )}
                   {/* Companion Timer Panel */}
@@ -1355,30 +1153,25 @@ export default function App() {
             )}
 
             {activeMainTab === 'stats' && (
-              <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+              <div className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 rounded-3xl p-5 sm:p-6 shadow-[0_0_25px_rgba(236,72,153,0.08)]">
                 <StatsDashboard stats={stats} tasks={tasks} />
               </div>
             )}
 
-            {activeMainTab === 'coach' && (
-              <div className="w-full max-w-4xl mx-auto">
-                <AICoach
-                  level={stats.level}
-                  streak={stats.streak}
-                  totalTasksCompleted={stats.totalTasksCompleted}
-                  currentTaskTitle={activeTaskTitle}
-                />
+            {activeMainTab === 'guide' && (
+              <div className="w-full max-w-5xl mx-auto">
+                <GuideTab onGoToTasks={() => handleTabClick('tasks')} />
               </div>
             )}
 
             {activeMainTab === 'achievements' && (
-              <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+              <div className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 rounded-3xl p-5 sm:p-6 shadow-[0_0_25px_rgba(236,72,153,0.08)]">
                 <AchievementsList achievements={achievements} />
               </div>
             )}
 
             {activeMainTab === 'journal' && (
-              <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-5 sm:p-6 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+              <div className="bg-zinc-950 border border-pink-500/30 bg-gradient-to-b from-pink-950/20 via-zinc-950 to-zinc-950 rounded-3xl p-5 sm:p-6 shadow-[0_0_25px_rgba(236,72,153,0.08)]">
                 <JournalTab
                   entries={journalEntries}
                   onAddEntry={handleAddJournalEntryWrapper}
@@ -1405,7 +1198,7 @@ export default function App() {
       </main>
 
       {/* Symmetrical footer */}
-      <footer className="w-full px-4 sm:px-6 md:px-8 lg:px-10 mt-12 pb-24 md:pb-12 text-center flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500 border-t border-zinc-900/60 pt-4">
+      <footer className="w-full px-4 sm:px-6 md:px-8 lg:px-10 mt-12 pb-28 text-center flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500 border-t border-zinc-900/60 pt-4">
         <span className="font-mono">Todos os direitos reservados</span>
         <button
           id="reset-all-data-btn"
@@ -1799,36 +1592,7 @@ export default function App() {
         onSimulateDays={handleSimulateDays}
       />
 
-      {/* Settings & Theme Customization Modal */}
-      <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        accentTheme={accentTheme}
-        onSelectTheme={(theme) => {
-          setAccentTheme(theme);
-          playTypeSound();
-        }}
-        isNight={isNight}
-        onToggleNight={() => {
-          setIsNight(!isNight);
-          playTypeSound();
-        }}
-        soundEnabled={soundEnabled}
-        onToggleSound={handleToggleSound}
-        zenMode={zenMode}
-        onToggleZen={() => {
-          setZenMode(!zenMode);
-          playTypeSound();
-        }}
-        premium={premium}
-        daysOfUse={getDaysOfUse()}
-        completedTasksCount={completedTasksCount}
-        onOpenPremiumModal={() => setShowPremiumModal(true)}
-        onResetJourney={() => setShowResetConfirm(true)}
-        onExportBackup={() => handleExportBackup(false)}
-        onRestoreBackupFile={handleRestoreBackupFile}
-        lastAutoBackupTimestamp={lastAutoBackupTimestamp}
-      />
+
 
       {/* Deep Work Fullscreen Overlay */}
       <DeepWorkOverlay

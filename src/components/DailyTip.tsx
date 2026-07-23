@@ -97,29 +97,29 @@ export default function DailyTip({ userLevel = 1, streak = 1, totalTasksComplete
       id="daily-focus-tip-container" 
       className="w-full px-4 sm:px-6 md:px-8 mt-4 animate-slide-down"
     >
-      <div className="relative overflow-hidden bg-zinc-950 border border-orange-500/30 rounded-2xl p-4 sm:p-5 shadow-[0_0_20px_rgba(249,115,22,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pop-in">
-        {/* Cyber Bracket Deco */}
-        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-orange-500" />
-        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-orange-400" />
-        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-orange-400" />
-        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-orange-500" />
+      <div className="relative overflow-hidden bg-zinc-950 border border-pink-500/30 rounded-2xl p-4 sm:p-5 shadow-[0_0_20px_rgba(244,114,182,0.15)] flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pop-in">
+        {/* Sakura Bracket Deco */}
+        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-pink-500" />
+        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-pink-400" />
+        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-pink-400" />
+        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-pink-500" />
 
         {/* Scan lines */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,100,0,0.04),rgba(0,0,0,0.02),rgba(255,150,0,0.04))] bg-[size:100%_4px,6px_100%] pointer-events-none opacity-20" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(244,114,182,0.04),rgba(0,0,0,0.02),rgba(244,63,94,0.04))] bg-[size:100%_4px,6px_100%] pointer-events-none opacity-20" />
 
         {/* Content */}
         <div className="flex items-start space-x-3.5 flex-1 relative z-10">
-          <div className="bg-orange-950/40 border border-orange-500/40 p-2.5 rounded-xl text-orange-400 shrink-0 mt-1 shadow-[0_0_12px_rgba(249,115,22,0.2)]">
-            <Lightbulb className="w-4 h-4 animate-pulse text-orange-400" />
+          <div className="bg-pink-950/40 border border-pink-500/40 p-2.5 rounded-xl text-pink-400 shrink-0 mt-1 shadow-[0_0_12px_rgba(244,114,182,0.2)]">
+            <Lightbulb className="w-4 h-4 animate-pulse text-pink-400" />
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-              <span className="text-[9px] font-extrabold text-orange-400 uppercase tracking-widest font-mono bg-orange-950/50 px-2 py-0.5 rounded-md border border-orange-500/20">
+              <span className="text-[9px] font-extrabold text-pink-300 uppercase tracking-widest font-mono bg-pink-950/50 px-2 py-0.5 rounded-md border border-pink-500/20">
                 DICA DE FOCO // NÍVEL {userLevel}
               </span>
-              <span className="flex items-center text-[9px] font-extrabold text-orange-300 uppercase tracking-widest font-mono bg-zinc-900 px-2 py-0.5 rounded-md border border-orange-500/20">
-                <Sparkles className="w-3 h-3 text-orange-400 mr-1 animate-spin" style={{ animationDuration: '6s' }} />
+              <span className="flex items-center text-[9px] font-extrabold text-pink-300 uppercase tracking-widest font-mono bg-zinc-900 px-2 py-0.5 rounded-md border border-pink-500/20">
+                <Sparkles className="w-3 h-3 text-pink-400 mr-1 animate-spin" style={{ animationDuration: '6s' }} />
                 IA GEMINI PERSONALIZADA
               </span>
             </div>
@@ -133,7 +133,7 @@ export default function DailyTip({ userLevel = 1, streak = 1, totalTasksComplete
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex items-center space-x-2 text-orange-400 text-xs font-mono py-1"
+                    className="flex items-center space-x-2 text-pink-400 text-xs font-mono py-1"
                   >
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     <span>Gerando frase personalizada para o Nível {userLevel}...</span>
@@ -150,7 +150,7 @@ export default function DailyTip({ userLevel = 1, streak = 1, totalTasksComplete
                     <p className="text-sm text-zinc-100 leading-relaxed font-semibold font-sans">
                       "{currentQuote.text}"
                     </p>
-                    <p className="text-[10px] text-orange-400/90 font-mono uppercase tracking-widest font-bold">
+                    <p className="text-[10px] text-pink-400/90 font-mono uppercase tracking-widest font-bold">
                       — {currentQuote.author}
                     </p>
                   </motion.div>
@@ -163,9 +163,9 @@ export default function DailyTip({ userLevel = 1, streak = 1, totalTasksComplete
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
-                className="mt-2 text-[10px] text-orange-400 font-mono font-bold flex items-center space-x-1.5"
+                className="mt-2 text-[10px] text-pink-400 font-mono font-bold flex items-center space-x-1.5"
               >
-                <Check className="w-3 h-3 text-orange-400" />
+                <Check className="w-3 h-3 text-pink-400" />
                 <span>FRASE SALVA NAS SUA PREFERÊNCIAS!</span>
               </motion.div>
             )}
@@ -179,19 +179,19 @@ export default function DailyTip({ userLevel = 1, streak = 1, totalTasksComplete
             onClick={handleToggleLike}
             className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-all duration-300 active:scale-90 cursor-pointer ${
               isLiked 
-                ? 'bg-orange-950/50 border-orange-500 text-orange-400 shadow-[0_0_12px_rgba(249,115,22,0.3)]' 
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-orange-400 hover:border-orange-500/40'
+                ? 'bg-pink-950/50 border-pink-500 text-pink-400 shadow-[0_0_12px_rgba(244,114,182,0.3)]' 
+                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-pink-400 hover:border-pink-500/40'
             }`}
             title={isLiked ? "Remover curtida" : "Curtir frase"}
           >
-            <Heart className={`w-4 h-4 ${isLiked ? 'fill-orange-500 stroke-orange-500' : ''}`} />
+            <Heart className={`w-4 h-4 ${isLiked ? 'fill-pink-500 stroke-pink-500' : ''}`} />
           </button>
 
           <button
             type="button"
             onClick={fetchGeminiTip}
             disabled={loading}
-            className="flex items-center justify-center w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-orange-400 hover:text-orange-300 hover:border-orange-500/40 transition-all duration-300 cursor-pointer shadow-sm disabled:opacity-50"
+            className="flex items-center justify-center w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-pink-400 hover:text-pink-300 hover:border-pink-500/40 transition-all duration-300 cursor-pointer shadow-sm disabled:opacity-50"
             title="Gerar Nova Frase Personalizada com IA"
           >
             <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

@@ -294,9 +294,9 @@ export default function GuideTab({ onGoToTasks }: GuideTabProps) {
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white uppercase">Premium</h4>
+              <h4 className="text-xs font-bold text-white uppercase">Acesso Total</h4>
               <p className="text-[11px] text-zinc-400 mt-0.5">
-                Verifique o status da sua assinatura e ative seu acesso ilimitado na Kiwify.
+                Todas as funcionalidades, temas, áudios e sincronização estão 100% liberadas gratuitamente.
               </p>
             </div>
           </div>

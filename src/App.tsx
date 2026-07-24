@@ -13,11 +13,8 @@ import ShareCardModal from './components/ShareCardModal';
 import JournalTab from './components/JournalTab';
 import LongTermGoals from './components/LongTermGoals';
 import OnboardingScreen from './components/OnboardingScreen';
-import PremiumModal from './components/PremiumModal';
-import PremiumWelcome from './components/PremiumWelcome';
 import SettingsModal from './components/SettingsModal';
 import DeepWorkOverlay from './components/DeepWorkOverlay';
-import PaymentStatusTab from './components/PaymentStatusTab';
 import { AccentTheme } from './utils/theme';
 import { Flame, Award, Zap, RefreshCw, Sparkles, X, Volume2, VolumeX, Share2, Trophy, BarChart2, CheckSquare, BookOpen, Lightbulb, Leaf, Sliders, Lock, ShieldCheck, Brain, Moon, Sun, Database, ArrowDownCircle, ArrowUpCircle, HelpCircle } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled as setGlobalSoundEnabled, playTypeSound, playLevelUpSound } from './lib/sound';
@@ -91,20 +88,12 @@ export default function App() {
     return localStorage.getItem('focus_quest_offline_mode') === 'true';
   });
 
-  // Premium & Purchase states
-  const [premium, setPremium] = useState<boolean>(() => {
-    return localStorage.getItem('focus_quest_premium') === 'true';
-  });
-  const [planType, setPlanType] = useState<string | null>(() => {
-    return localStorage.getItem('focus_quest_plan_type');
-  });
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState<boolean>(() => {
-    return localStorage.getItem('focus_quest_show_welcome') === 'true';
-  });
+  // Premium & Access states - 100% unlocked free access
+  const [premium] = useState<boolean>(true);
+  const [planType] = useState<string | null>('lifetime');
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState<boolean>(false);
   const [showPremiumModal, setShowPremiumModal] = useState<boolean>(false);
-  const [showPremiumPrompt, setShowPremiumPrompt] = useState<boolean>(() => {
-    return localStorage.getItem('focus_quest_premium_prompt_dismissed') !== 'true';
-  });
+  const [showPremiumPrompt, setShowPremiumPrompt] = useState<boolean>(false);
 
   // Settings & Theme customization states
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
@@ -119,7 +108,7 @@ export default function App() {
     localStorage.setItem('focus_quest_accent_theme', accentTheme);
   }, [accentTheme]);
 
-  // App functions tracked for premium eligibility
+  // App functions tracked for statistics
   const [usedFunctions, setUsedFunctions] = useState<string[]>(() => {
     const saved = localStorage.getItem('focus_quest_used_functions');
     if (saved) {
@@ -152,10 +141,7 @@ export default function App() {
     return saved;
   });
 
-  const [simulatedDays, setSimulatedDays] = useState<number>(() => {
-    const saved = localStorage.getItem('focus_quest_simulated_days');
-    return saved ? parseInt(saved, 10) : 0;
-  });
+  const [simulatedDays, setSimulatedDays] = useState<number>(0);
 
   const getDaysOfUse = () => {
     const firstUsedDate = new Date(firstUsedAt);
@@ -166,38 +152,7 @@ export default function App() {
   };
 
   const completedTasksCount = Math.max(stats.totalTasksCompleted || 0, tasks.filter(t => t.completed).length);
-  const isTrialEnded = getDaysOfUse() >= 1;
-
-  // Listen to Stripe payment success redirect URL params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const success = params.get('payment_success');
-    const type = params.get('plan_type');
-    const paramEmail = params.get('email');
-
-    if (success === 'true') {
-      const activeEmail = paramEmail || session?.email || 'usuario.teste@focusquest.com';
-      const targetPlan = type || 'monthly';
-      
-      setPremium(true);
-      setPlanType(targetPlan);
-      setShowWelcomeScreen(true);
-      
-      localStorage.setItem('focus_quest_premium', 'true');
-      localStorage.setItem('focus_quest_plan_type', targetPlan);
-      localStorage.setItem('focus_quest_show_welcome', 'true');
-
-      // Update backend premium status
-      fetch('/api/user/premium-success', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: activeEmail, planType: targetPlan })
-      }).catch(err => console.error("Error updating backend premium status:", err));
-
-      // Clean parameters in window location
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [session]);
+  const isTrialEnded = false;
 
   // Cloud Sync Status states
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
@@ -294,17 +249,10 @@ export default function App() {
   };
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<'tasks' | 'stats' | 'guide' | 'achievements' | 'journal' | 'payment'>('tasks');
-  const [blockedActionNotice, setBlockedActionNotice] = useState<string | null>(null);
+  const [activeMainTab, setActiveMainTab] = useState<'tasks' | 'stats' | 'guide' | 'achievements' | 'journal'>('tasks');
 
-  const handleTabClick = (tab: 'tasks' | 'stats' | 'guide' | 'achievements' | 'journal' | 'payment') => {
+  const handleTabClick = (tab: 'tasks' | 'stats' | 'guide' | 'achievements' | 'journal') => {
     playTypeSound();
-    if (!premium && isTrialEnded && tab !== 'payment') {
-      setBlockedActionNotice('🔒 PERÍODO DE TESTE EXPIRADO: Assine o FocusOS no Kiwify para liberar todas as abas.');
-      setActiveMainTab('payment');
-      return;
-    }
-    setBlockedActionNotice(null);
     setActiveMainTab(tab);
   };
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -350,35 +298,11 @@ export default function App() {
     trackFunctionUsed('tip');
   };
 
-  // Redirect to 'payment' tab if trial has ended and user is not premium
-  useEffect(() => {
-    if (!premium && isTrialEnded && activeMainTab !== 'payment') {
-      setActiveMainTab('payment');
-    }
-  }, [premium, isTrialEnded]);
-
   useEffect(() => {
     if (zenMode) {
       setActiveMainTab('tasks');
     }
   }, [zenMode]);
-
-  const handlePaymentSuccess = (pType: string, buyerEmail?: string, token?: string) => {
-    setPremium(true);
-    setPlanType(pType);
-    localStorage.setItem('focus_quest_premium', 'true');
-    localStorage.setItem('focus_quest_plan_type', pType);
-    if (buyerEmail) {
-      setSession(prev => ({
-        email: buyerEmail,
-        token: token || prev?.token || 'premium_session'
-      }));
-    }
-    setShowPremiumModal(false);
-    setActiveMainTab('tasks');
-    setBlockedActionNotice(null);
-    playLevelUpSound();
-  };
 
   // Lock body scroll and set viewport styling when Cloud Conflict Resolver Modal is active
   useEffect(() => {
@@ -494,21 +418,11 @@ export default function App() {
     estimatedFocusPomodoros: number,
     priority?: any
   ) => {
-    if (!premium && isTrialEnded) {
-      setBlockedActionNotice('🔒 PERÍODO DE TESTE EXPIRADO: Assine o FocusOS no Kiwify para criar novas missões.');
-      setActiveMainTab('payment');
-      return null;
-    }
     trackFunctionUsed('task');
     return addTask(title, description, difficulty, category, estimatedFocusPomodoros || 1, priority || 'medium');
   };
 
   const handleAddJournalEntryWrapper = (mood: string, notes: string) => {
-    if (!premium && isTrialEnded) {
-      setBlockedActionNotice('🔒 PERÍODO DE TESTE EXPIRADO: Assine o FocusOS no Kiwify para criar entradas no diário.');
-      setActiveMainTab('payment');
-      return;
-    }
     trackFunctionUsed('journal');
     return addJournalEntry(mood, notes);
   };
@@ -552,19 +466,6 @@ export default function App() {
 
   const activeTaskTitle = selectedTask && !selectedTask.completed ? selectedTask.title : undefined;
 
-  // Welcome screen gating for premium customers
-  if (showWelcomeScreen) {
-    return (
-      <PremiumWelcome
-        planType={planType}
-        onEnterApp={() => {
-          setShowWelcomeScreen(false);
-          localStorage.setItem('focus_quest_show_welcome', 'false');
-        }}
-      />
-    );
-  }
-
   // If the user has not logged in / onboarded, show Onboarding Welcome Screen
   if (!session) {
     return (
@@ -576,10 +477,6 @@ export default function App() {
           localStorage.setItem('focus_quest_has_visited', 'true');
           localStorage.setItem('focus_quest_offline_mode', 'false');
           setIsOfflineMode(false);
-          
-          setPremium(false);
-          localStorage.removeItem('focus_quest_premium');
-          localStorage.removeItem('focus_quest_plan_type');
           
           try {
             setSyncStatus('syncing');
@@ -825,32 +722,6 @@ export default function App() {
                 <span className="hidden sm:inline ml-1.5 font-mono uppercase tracking-wider text-[11px]">Deep Work</span>
               </button>
 
-              {/* Premium Upgrade Button */}
-              {!premium ? (
-                <button
-                  id="upgrade-premium-rpg-btn"
-                  onClick={() => { playTypeSound(); setShowPremiumModal(true); }}
-                  className="relative flex items-center justify-center bg-gradient-to-r from-rose-600/30 via-pink-600/30 to-rose-600/30 hover:from-rose-600/40 hover:to-pink-500/40 border border-pink-500/40 text-pink-300 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(244,114,182,0.12)]"
-                  title="Upgrade Premium RPG"
-                >
-                  <Sparkles className="w-4 h-4 text-pink-400 animate-pulse shrink-0" />
-                  <span className="hidden sm:inline ml-1.5 font-bold font-mono">Premium</span>
-                  {isTrialEnded && (
-                    <>
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-400 rounded-full animate-ping pointer-events-none" />
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-zinc-950 pointer-events-none" />
-                    </>
-                  )}
-                </button>
-              ) : (
-                <div 
-                  className="flex items-center justify-center bg-pink-950/30 border border-pink-500/30 text-pink-300 px-3 py-2 rounded-xl text-xs font-bold font-mono tracking-widest uppercase shadow-[0_0_10px_rgba(244,114,182,0.05)]"
-                  title="Status Premium: Ativo"
-                >
-                  <Sparkles className="w-4 h-4 text-pink-400 shrink-0" />
-                  <span className="hidden sm:inline ml-1.5 text-[9px] font-black font-mono tracking-wider">// PREMIUM</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -987,51 +858,9 @@ export default function App() {
                 <span className="hidden sm:inline">日誌 • Diário</span>
                 <span className="sm:hidden text-[8px] mt-0.5">Diário</span>
               </button>
-
-              {/* Status do Pagamento Tab */}
-              <button
-                onClick={() => handleTabClick('payment')}
-                className={`flex flex-col sm:flex-row items-center space-x-0 sm:space-x-2 px-2 py-1 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-                  activeMainTab === 'payment'
-                    ? 'bg-pink-950/90 text-pink-300 border border-pink-500/70 shadow-[0_0_15px_rgba(244,114,182,0.3)] font-extrabold'
-                    : !premium && isTrialEnded
-                    ? 'text-pink-300 bg-pink-950/50 border border-pink-500/50 hover:bg-pink-900/60 animate-pulse'
-                    : 'text-zinc-400 hover:text-pink-300 hover:bg-zinc-900/60 border border-transparent'
-                }`}
-              >
-                {premium ? (
-                  <ShieldCheck className="w-4 h-4 text-pink-400" />
-                ) : isTrialEnded ? (
-                  <Lock className="w-4 h-4 text-pink-400" />
-                ) : (
-                  <Sparkles className="w-4 h-4 text-rose-400 animate-pulse" />
-                )}
-                <span className="hidden sm:inline">侍 • Premium</span>
-                <span className="sm:hidden text-[8px] mt-0.5">Premium</span>
-              </button>
             </div>
           </div>
         </nav>
-      )}
-
-      {/* Persistent Warning Banner when !premium AND isTrialEnded */}
-      {!premium && isTrialEnded && !zenMode && (
-        <div className="bg-gradient-to-r from-pink-950/90 via-zinc-950 to-rose-950/90 border-b border-pink-500/40 text-white px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in z-30">
-          <div className="flex items-center space-x-3">
-            <div className="p-1.5 rounded-xl bg-pink-500/20 border border-pink-500/40 text-pink-400 shrink-0">
-              <Lock className="w-4 h-4 animate-bounce text-pink-400" />
-            </div>
-            <p className="text-xs font-semibold text-zinc-200 font-sans">
-              <strong>🔒 TESTE GRÁTIS EXPIRADO:</strong> Seu período de 1 dia de teste terminou. Adquira a assinatura do FocusOS na Kiwify para continuar.
-            </p>
-          </div>
-          <button
-            onClick={() => handleTabClick('payment')}
-            className="bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-black text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-xl border border-pink-400 transition-all cursor-pointer shrink-0 font-mono shadow-md active:scale-95"
-          >
-            Assinar Agora
-          </button>
-        </div>
       )}
 
       {/* Daily Focus Tip Message */}
@@ -1045,51 +874,6 @@ export default function App() {
 
       {/* Main Content Workspace Grid */}
       <main className="w-full flex-1 px-4 sm:px-6 md:px-8 lg:px-10 mt-4 pb-28">
-        {/* Active Premium purchase notification banner */}
-        {!premium && isTrialEnded && showPremiumPrompt && !showDeepWork && (
-          <div id="premium-purchase-notification" className="mb-6 bg-gradient-to-r from-pink-950/90 via-rose-950/90 to-pink-950/90 border border-pink-500/50 text-white p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_25px_rgba(244,114,182,0.2)] relative overflow-hidden group animate-pop-in">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-pink-400/60 to-transparent animate-pulse" />
-            <div className="flex items-center space-x-3.5 text-left">
-              <div className="bg-pink-500/20 border border-pink-500/40 p-3 rounded-2xl text-pink-400 shrink-0">
-                <Sparkles className="w-6 h-6 animate-pulse text-pink-400" />
-              </div>
-              <div>
-                <span className="text-[9.5px] font-mono font-black text-pink-400 uppercase tracking-widest block">
-                  ⚠️ SEU PERÍODO DE TESTE GRÁTIS ACABOU!
-                </span>
-                <h4 className="text-sm font-black text-white uppercase tracking-tight mt-0.5">
-                  Teste Gratuito Finalizado
-                </h4>
-                <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-                  Seu período de teste grátis expirou. Assine o FocusOS Premium para continuar evoluindo seu RPG, mantendo o Mentor IA, Backup em Nuvem e métricas avançadas sem restrições.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-              <button
-                onClick={() => {
-                  playTypeSound();
-                  setShowPremiumModal(true);
-                }}
-                className="flex-1 md:flex-initial bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-lg shadow-pink-500/30 font-mono"
-              >
-                Assinar Agora
-              </button>
-              <button
-                onClick={() => {
-                  playTypeSound();
-                  setShowPremiumPrompt(false);
-                  localStorage.setItem('focus_quest_premium_prompt_dismissed', 'true');
-                }}
-                className="p-2.5 text-zinc-500 hover:text-white transition-colors rounded-xl cursor-pointer"
-                title="Fechar notificação"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
         <AnimatePresence mode="wait">
           <motion.div
             key={activeMainTab}
@@ -1179,19 +963,6 @@ export default function App() {
                   currentFocusTaskTitle={activeTaskTitle}
                 />
               </div>
-            )}
-
-            {activeMainTab === 'payment' && (
-              <PaymentStatusTab
-                premium={premium}
-                planType={planType}
-                email={session?.email || ''}
-                isTrialEnded={isTrialEnded}
-                onPaymentSuccess={handlePaymentSuccess}
-                onGoToTasks={() => {
-                  setActiveMainTab('tasks');
-                }}
-              />
             )}
           </motion.div>
         </AnimatePresence>
@@ -1554,45 +1325,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* Premium presentation & checkout dialog modal */}
-      <PremiumModal
-        isOpen={showPremiumModal}
-        onClose={() => setShowPremiumModal(false)}
-        email={session?.email || 'usuario.teste@focusquest.com'}
-        stats={{
-          totalTasksCompleted: stats.totalTasksCompleted,
-          level: stats.level,
-          streak: stats.streak
-        }}
-        usedFunctionsCount={usedFunctions.filter(f => ['sound', 'filter', 'zen', 'task', 'journal'].includes(f)).length}
-        totalFunctionsCount={5} // Total active functions: sound, filter, zen, task, journal
-        daysOfUse={getDaysOfUse()}
-        completedTasksCount={completedTasksCount}
-        canClose={true}
-        onPaymentSuccess={(type, buyerEmail, token) => {
-          setPremium(true);
-          setPlanType(type);
-          setShowPremiumModal(false);
-          setShowWelcomeScreen(true);
-          localStorage.setItem('focus_quest_premium', 'true');
-          localStorage.setItem('focus_quest_plan_type', type);
-          localStorage.setItem('focus_quest_show_welcome', 'true');
-          if (buyerEmail) {
-            localStorage.setItem('focus_quest_buyer_email', buyerEmail);
-            if (token) {
-              const sessionObj = { email: buyerEmail, token: token };
-              setSession(sessionObj);
-              localStorage.setItem('focus_quest_session', JSON.stringify(sessionObj));
-            }
-          }
-        }}
-        onSimulateTasks={handleSimulateTasks}
-        onSimulateFunctions={handleSimulateFunctions}
-        onSimulateDays={handleSimulateDays}
-      />
-
-
 
       {/* Deep Work Fullscreen Overlay */}
       <DeepWorkOverlay

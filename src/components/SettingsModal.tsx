@@ -120,40 +120,28 @@ export default function SettingsModal({
             </div>
           </div>
 
-          {/* SECTION 2: PLANO & PERÍODO DE TESTE */}
+          {/* SECTION 2: STATUS DA LICENÇA */}
           <div className="border-t border-zinc-900 pt-5">
             <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider font-mono mb-3.5 flex items-center space-x-2">
-              <Shield className="w-4 h-4 text-orange-400" />
-              <span>Status da Conta & Licença</span>
+              <Shield className="w-4 h-4 text-pink-400" />
+              <span>Status da Conta</span>
             </h4>
 
             <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl flex flex-col space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2.5">
-                  <div className={`p-2 rounded-xl ${premium ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-zinc-800 text-zinc-400'}`}>
+                  <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400 border border-pink-500/30">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
                     <span className="text-xs font-black text-white uppercase block">
-                      {premium ? 'Plano Premium Ativo' : 'Período Gratuito de Teste'}
+                      Acesso Total Completo
                     </span>
                     <span className="text-[10px] text-zinc-400 font-mono">
-                      Dias de uso: {daysOfUse}
+                      Todas as ferramentas 100% liberadas • Dias de uso: {daysOfUse}
                     </span>
                   </div>
                 </div>
-
-                {!premium && (
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenPremiumModal();
-                    }}
-                    className="bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-[10px] px-3 py-2 rounded-xl uppercase tracking-wider shadow-md cursor-pointer shrink-0"
-                  >
-                    Assinar Premium
-                  </button>
-                )}
               </div>
             </div>
           </div>
